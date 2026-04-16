@@ -1,16 +1,100 @@
-# React + Vite
+# Frontend MatchControl
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación frontend del sistema **MatchControl**, desarrollada con React y Vite para la gestión de torneos y partidos.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Tecnologías utilizadas
 
-## React Compiler
+* React
+* Vite
+* JavaScript
+* Tailwind CSS
+* Node.js
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## Requisitos
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+* Node.js (versión 16 o superior)
+* npm
+
+---
+
+## Instalación
+
+Clonar el repositorio:
+
+```bash
+git clone https://github.com/espinoza14sofia-debug/Frontend-matchcontrol.git
+```
+
+Ingresar a la carpeta del proyecto:
+
+```bash
+cd Frontend-matchcontrol
+```
+
+Instalar dependencias:
+
+```bash
+npm install
+```
+
+---
+
+## Ejecución
+
+Iniciar el servidor de desarrollo:
+
+```bash
+npm run dev
+```
+
+Abrir en el navegador:
+
+http://localhost:5173
+
+---
+
+## Estructura del proyecto
+
+```
+Frontend-matchcontrol/
+│
+├── public/        # Archivos estáticos
+├── src/           # Componentes y lógica de la app
+├── package.json   # Dependencias y scripts
+├── vite.config.js # Configuración de Vite
+└── README.md
+```
+
+---
+
+## Características
+
+* Interfaz desarrollada con React
+* Recarga en caliente (HMR) con Vite
+* Estilos con Tailwind CSS
+* Arquitectura modular por componentes
+
+---
+
+## Notas
+
+* No modificar la carpeta node_modules
+* Si hay errores, ejecutar nuevamente:
+  npm install
+* El sistema requiere un backend para funcionar completamente
+
+---
+
+## Autor
+
+Sofía Espinoza
+
+---
+
+## Estado
+
+En desarrollo
