@@ -1,6 +1,7 @@
 # Frontend MatchControl
 
-Aplicación frontend del sistema **MatchControl**, desarrollada con React y Vite para la gestión de torneos y partidos.
+Interfaz web del sistema **MatchControl**, desarrollada con React y Vite.
+Permite la interacción de usuarios con el sistema de gestión de torneos mediante una interfaz moderna y responsiva.
 
 ---
 
@@ -29,7 +30,7 @@ Clonar el repositorio:
 git clone https://github.com/espinoza14sofia-debug/Frontend-matchcontrol.git
 ```
 
-Ingresar a la carpeta del proyecto:
+Ingresar a la carpeta:
 
 ```bash
 cd Frontend-matchcontrol
@@ -63,38 +64,45 @@ http://localhost:5173
 Frontend-matchcontrol/
 │
 ├── public/        # Archivos estáticos
-├── src/           # Componentes y lógica de la app
-├── package.json   # Dependencias y scripts
-├── vite.config.js # Configuración de Vite
+├── src/           # Componentes y lógica
+├── package.json   # Dependencias
+├── vite.config.js # Configuración
 └── README.md
 ```
 
 ---
 
-## Características
+## Conexión con el Backend
 
-* Interfaz desarrollada con React
-* Recarga en caliente (HMR) con Vite
-* Estilos con Tailwind CSS
-* Arquitectura modular por componentes
+Este frontend consume una API REST desarrollada en Node.js.
+
+Asegurarse de que el backend esté corriendo, por ejemplo en:
+
+http://localhost:3000
 
 ---
 
 ## Notas
 
 * No modificar la carpeta node_modules
-* Si hay errores, ejecutar nuevamente:
+* Si ocurre algún error, ejecutar nuevamente:
   npm install
-* El sistema requiere un backend para funcionar completamente
+* Proyecto en desarrollo académico
 
 ---
 
-## Autor
+##  Autoras
 
-Sofía Espinoza
+| Nombre | GitHub |
+|---|---|
+| Sofía Vargas Espinoza | [@espinoza14sofia-debug](https://github.com/espinoza14sofia-debug) |
+| Jendry Linneth Murillo Pérez | https://github.com/lnnth0440
 
----
 
-## Estado
 
-En desarrollo
+**Curso:** Base de Datos II  
+**Profesor:** David Acuña Mora  
+**Universidad:** Universidad Latina de Costa Rica — Sede Santa Cruz  
+**Período:** I Cuatrimestre 2026
+
+
