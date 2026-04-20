@@ -24,7 +24,7 @@ export const authService = {
                 Nickname: userData.nickname,
                 Email: userData.email,
                 Password_Hash: userData.password,
-                Id_Rol: 4 // Asignamos el rol de "Usuario" por defecto  
+                Id_Rol: 4  
             })
         });
         return await response.json();

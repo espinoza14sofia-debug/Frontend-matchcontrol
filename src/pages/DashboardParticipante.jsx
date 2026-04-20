@@ -1,453 +1,504 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API, getUser, getHeaders, Badge, Sidebar, Card, CardHeader, MetricCard, Btn, Input, Select, PageHeader, EmptyState, Row, Avatar } from './shared.jsx';
 
-const API = 'http://localhost:3000';
-const getUser = () => { try { return JSON.parse(localStorage.getItem('usuario')) || {}; } catch { return {}; } };
-const getHeaders = () => ({
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
-    'admin-sofi': 'mcsofi',
-});
+const ITEMS = [
+    { id: 'dashboard', label: 'Inicio', icon: 'M3 3h7v7H3zM13 3h7v7h-7zM3 13h7v7H3zM13 13h7v7h-7z' },
+    { id: 'torneos', label: 'Torneos', icon: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01' },
+    { id: 'misequipo', label: 'Mi Equipo', icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
+    { id: 'solicitud', label: 'Solicitar Rol', icon: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
+];
 
-const Badge = ({ estado }) => {
-    const map = {
-        'Borrador': 'bg-[#E8E4E1] text-[#5F2119]',
-        'Inscripciones': 'bg-[#D7C1A8]/40 text-[#7C2220]',
-        'En Curso': 'bg-[#7C2220] text-[#F4F1EE]',
-        'Finalizado': 'bg-[#E8E4E1] text-[#A28C75]',
-        'Cancelado': 'bg-[#5F2119]/10 text-[#5F2119]',
-        'Pendiente': 'bg-[#D7C1A8]/50 text-[#7C2220]',
-        'Aceptado': 'bg-[#7C2220]/10 text-[#7C2220]',
-        'Rechazado': 'bg-[#5F2119]/10 text-[#5F2119]',
-        'Capitán': 'bg-[#5F2119] text-[#F4F1EE]',
-    };
-    return <span className={`inline-block text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide ${map[estado] || 'bg-[#E8E4E1] text-[#A28C75]'}`}>{estado}</span>;
-};
-
-const iniciales = n => n ? n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
-
-const Sidebar = ({ activo, setActivo, usuario, onLogout, notifCount }) => {
-    const items = [
-        { id: 'dashboard', label: 'Inicio' },
-        { id: 'torneos', label: 'Torneos disponibles' },
-        { id: 'misequipos', label: 'Mi equipo' },
-        { id: 'notificaciones', label: 'Notificaciones' },
-        { id: 'solicitud', label: 'Solicitar rol' },
-    ];
-    return (
-        <aside className="w-56 bg-[#5F2119] flex flex-col min-h-screen shrink-0">
-            <div className="px-6 py-8 border-b border-[#7C2220]">
-                <h1 className="text-xl font-bold text-[#F4F1EE]">Match<span className="text-[#D7C1A8]">Control</span></h1>
-                <div className="flex items-center gap-3 mt-5">
-                    <div className="w-9 h-9 rounded-full bg-[#7C2220] flex items-center justify-center text-xs font-bold text-[#D7C1A8] shrink-0">
-                        {iniciales(usuario?.nickname || usuario?.nombreCompleto)}
-                    </div>
-                    <div>
-                        <p className="text-[#F4F1EE] text-sm font-semibold leading-none">{usuario?.nickname || 'Jugador'}</p>
-                        <span className="inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F4F1EE]/10 text-[#D7C1A8] uppercase tracking-widest">Participante</span>
-                    </div>
-                </div>
-            </div>
-            <nav className="flex-1 py-4 px-3 space-y-0.5">
-                {items.map(item => (
-                    <button key={item.id} onClick={() => setActivo(item.id)}
-                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all text-left ${activo === item.id ? 'bg-[#7C2220] text-[#F4F1EE]' : 'text-[#D7C1A8]/60 hover:bg-[#7C2220]/40 hover:text-[#F4F1EE]'}`}>
-                        <span>{item.label}</span>
-                        {item.id === 'notificaciones' && notifCount > 0 && (
-                            <span className="bg-[#F4F1EE] text-[#5F2119] text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">
-                                {notifCount > 9 ? '9+' : notifCount}
-                            </span>
-                        )}
-                    </button>
-                ))}
-            </nav>
-            <button onClick={onLogout} className="flex items-center gap-3 mx-3 mb-4 px-4 py-3 rounded-xl text-sm text-[#D7C1A8]/40 hover:bg-[#7C2220]/30 hover:text-[#D7C1A8] transition-all">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
-                Cerrar sesión
-            </button>
-        </aside>
-    );
-};
-
-const VistaDashboard = ({ setActivo, notifCount }) => {
+/* ── Dashboard ── */
+const VistaDashboard = () => {
+    const [inscripciones, setInscripciones] = useState([]);
     const [torneos, setTorneos] = useState([]);
-    const [misInscr, setMisInscr] = useState([]);
     const usuario = getUser();
 
     useEffect(() => {
-        fetch(`${API}/torneo`, { headers: getHeaders() }).then(r => r.json()).then(d => setTorneos(Array.isArray(d) ? d : d?.data || [])).catch(() => { });
-        if (usuario?.id) {
-            fetch(`${API}/participantes`, { headers: getHeaders() }).then(r => r.json())
-                .then(d => { const l = Array.isArray(d) ? d : d?.data || []; setMisInscr(l.filter(p => p.Id_Usuario === usuario.id)); }).catch(() => { });
-        }
+        const h = getHeaders();
+
+        fetch(`${API}/participantes`, { headers: h })
+            .then(r => r.json())
+            .then(d => {
+                const uid = Number(usuario?.Id_Usuario || usuario?.id || 0);
+                const all = Array.isArray(d) ? d : [];
+                setInscripciones(all.filter(p => Number(p.Id_Usuario) === uid));
+            }).catch(() => { });
+        fetch(`${API}/torneo`, { headers: h })
+            .then(r => r.json())
+            .then(d => setTorneos(Array.isArray(d) ? d : []))
+            .catch(() => { });
     }, []);
 
-    const abiertos = torneos.filter(t => t.Estado === 'Inscripciones');
+    const aceptadas = inscripciones.filter(i => i.Estado_Inscripcion === 'Aceptado');
+    const pendientes = inscripciones.filter(i => i.Estado_Inscripcion === 'Pendiente');
+    const disponibles = torneos.filter(t => t.Estado === 'Inscripciones');
 
     return (
-        <div>
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-[#5F2119]">Hola, {usuario?.nickname || 'jugador'} 👋</h1>
-                <p className="text-[#A28C75] text-sm mt-1.5">Tu espacio en MatchControl</p>
+        <>
+            <PageHeader title="Mi Panel" subtitle="Tu actividad en MatchControl" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '1.5rem' }}>
+                <MetricCard label="Torneos activos" value={aceptadas.length} accent />
+                <MetricCard label="Inscripciones pend." value={pendientes.length} />
+                <MetricCard label="Total inscritos" value={inscripciones.length} />
+                <MetricCard label="Torneos disponibles" value={disponibles.length} />
             </div>
-
-            <div className="grid grid-cols-3 gap-4 mb-8">
-                <div className="bg-[#5F2119] rounded-2xl p-6 border border-[#7C2220]">
-                    <p className="text-[11px] uppercase tracking-widest font-semibold text-[#D7C1A8]/60 mb-3">Torneos abiertos</p>
-                    <p className="text-4xl font-bold text-[#F4F1EE]">{abiertos.length}</p>
-                    <button onClick={() => setActivo('torneos')} className="text-xs text-[#D7C1A8]/60 mt-2 hover:text-[#D7C1A8] font-bold uppercase tracking-wider transition-colors">
-                        Inscribirme →
-                    </button>
-                </div>
-                <div className="bg-white rounded-2xl p-6 border border-[#E8E4E1]">
-                    <p className="text-[11px] uppercase tracking-widest font-semibold text-[#A28C75] mb-3">Mis inscripciones</p>
-                    <p className="text-4xl font-bold text-[#5F2119]">{misInscr.length}</p>
-                </div>
-                <div className="bg-white rounded-2xl p-6 border border-[#E8E4E1]">
-                    <p className="text-[11px] uppercase tracking-widest font-semibold text-[#A28C75] mb-3">Notificaciones nuevas</p>
-                    <p className="text-4xl font-bold text-[#5F2119]">{notifCount}</p>
-                    {notifCount > 0 && (
-                        <button onClick={() => setActivo('notificaciones')} className="text-xs text-[#7C2220] mt-2 font-bold hover:underline uppercase tracking-wider">
-                            Ver →
-                        </button>
-                    )}
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <Card>
+                    <CardHeader title="Mis inscripciones" />
+                    {inscripciones.length === 0
+                        ? <EmptyState msg="Aún no estás inscrito en ningún torneo" />
+                        : inscripciones.slice(0, 6).map(i => (
+                            <Row key={i.Id_Participante}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--luxe-black)' }}>{i.Nombre_En_Torneo || `Torneo #${i.Id_Torneo}`}</p>
+                                    <p style={{ fontSize: '11px', color: 'var(--luxe-taupe)' }}>Torneo #{i.Id_Torneo}</p>
+                                </div>
+                                <Badge estado={i.Estado_Inscripcion} />
+                            </Row>
+                        ))
+                    }
+                </Card>
+                <Card>
+                    <CardHeader title="Torneos con inscripciones abiertas" />
+                    {disponibles.length === 0
+                        ? <EmptyState msg="No hay torneos con inscripciones abiertas" />
+                        : disponibles.slice(0, 6).map(t => (
+                            <Row key={t.Id_Torneo}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--luxe-black)' }}>{t.Nombre}</p>
+                                    <p style={{ fontSize: '11px', color: 'var(--luxe-taupe)' }}>{t.Formato} · Max: {t.Max_Participantes}</p>
+                                </div>
+                                <Badge estado={t.Estado} />
+                            </Row>
+                        ))
+                    }
+                </Card>
             </div>
-
-            <div className="bg-white rounded-2xl border border-[#E8E4E1] overflow-hidden">
-                <div className="px-6 py-4 border-b border-[#F4F1EE] flex justify-between items-center">
-                    <h3 className="text-sm font-bold text-[#5F2119] uppercase tracking-widest">Torneos disponibles</h3>
-                    <button onClick={() => setActivo('torneos')} className="text-xs font-bold text-[#7C2220] hover:underline">Ver todos →</button>
-                </div>
-                <div className="divide-y divide-[#F4F1EE]">
-                    {torneos.length === 0 && <p className="px-6 py-8 text-sm text-[#A28C75] text-center">Sin torneos disponibles</p>}
-                    {torneos.slice(0, 5).map(t => (
-                        <div key={t.Id_Torneo} className="px-6 py-4 flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-semibold text-[#5F2119] truncate max-w-[180px]">{t.Nombre}</p>
-                                <p className="text-xs text-[#A28C75] mt-0.5">{t.Formato} · {t.Max_Participantes} participantes</p>
-                            </div>
-                            <Badge estado={t.Estado} />
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
+        </>
     );
 };
 
+/* ── Torneos ── */
 const VistaTorneos = () => {
     const [torneos, setTorneos] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const usuario = getUser();
-
-    useEffect(() => {
-        fetch(`${API}/torneo`, { headers: getHeaders() }).then(r => r.json()).then(d => setTorneos(Array.isArray(d) ? d : d?.data || [])).catch(() => { });
-    }, []);
-
-    const inscribirse = async (torneo) => {
-        if (!usuario?.id) { alert('Debes iniciar sesión'); return; }
-        setLoading(true);
-        try {
-            const res = await fetch(`${API}/participantes`, {
-                method: 'POST', headers: getHeaders(),
-                body: JSON.stringify({ Id_Torneo: torneo.Id_Torneo, Id_Usuario: usuario.id, Nombre_En_Torneo: usuario.nickname, Estado_Inscripcion: 'Pendiente' }),
-            });
-            if (!res.ok) throw new Error();
-            alert(`¡Inscripción enviada en "${torneo.Nombre}"!\nEspera la aprobación del organizador.`);
-        } catch { alert('Error al inscribirse'); }
-        finally { setLoading(false); }
-    };
-
-    return (
-        <div>
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-[#5F2119]">Torneos disponibles</h1>
-                <p className="text-[#A28C75] text-sm mt-1.5">Inscríbete en torneos abiertos</p>
-            </div>
-            <div className="space-y-3">
-                {torneos.length === 0 && (
-                    <div className="bg-white rounded-2xl border border-[#E8E4E1] p-12 text-center">
-                        <p className="text-sm text-[#A28C75]">Sin torneos disponibles por ahora</p>
-                    </div>
-                )}
-                {torneos.map(t => (
-                    <div key={t.Id_Torneo} className="bg-white rounded-2xl border border-[#E8E4E1] px-6 py-4 flex items-center gap-5">
-                        <div className="w-10 h-10 rounded-xl bg-[#F4F1EE] flex items-center justify-center shrink-0">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A28C75" strokeWidth="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z" /></svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-[#5F2119] truncate">{t.Nombre}</p>
-                            <p className="text-xs text-[#A28C75] mt-0.5">{t.Formato} · máx. {t.Max_Participantes} participantes</p>
-                        </div>
-                        <Badge estado={t.Estado} />
-                        <button disabled={t.Estado !== 'Inscripciones' || loading} onClick={() => inscribirse(t)}
-                            className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors shrink-0
-                                ${t.Estado === 'Inscripciones'
-                                    ? 'bg-[#5F2119] text-[#D7C1A8] hover:bg-[#7C2220]'
-                                    : 'bg-[#E8E4E1] text-[#A28C75] cursor-not-allowed'}`}>
-                            {t.Estado === 'Inscripciones' ? 'Inscribirse' : t.Estado}
-                        </button>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-const VistaEquipo = () => {
-    const [miEquipo, setMiEquipo] = useState(null);
-    const [miembros, setMiembros] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const usuario = getUser();
-
-    useEffect(() => {
-        if (!usuario?.id) { setLoading(false); return; }
-        // Buscar todos los equipos y ver en cuál está el usuario como jugador
-        fetch(`${API}/equipo-jugadores`, { headers: getHeaders() })
-            .then(r => r.json())
-            .then(async d => {
-                const todos = Array.isArray(d) ? d : [];
-                const miRel = todos.find(ej => (ej.Id_Usuario || ej.id_usuario) === usuario.id);
-                if (!miRel) { setLoading(false); return; }
-                const idEquipo = miRel.Id_Equipo || miRel.id_equipo;
-                // Obtener info del equipo
-                const eqRes = await fetch(`${API}/equipos/${idEquipo}`, { headers: getHeaders() });
-                const eq = await eqRes.json();
-                setMiEquipo(eq);
-                // Obtener miembros vía SP
-                const mRes = await fetch(`${API}/equipo-jugadores/equipo/${idEquipo}`, { headers: getHeaders() });
-                const mData = await mRes.json();
-                setMiembros(Array.isArray(mData) ? mData : mData?.data || []);
-            })
-            .catch(() => { })
-            .finally(() => setLoading(false));
-    }, []);
-
-    if (loading) return (
-        <div className="flex items-center justify-center h-64">
-            <p className="text-sm text-[#A28C75]">Cargando equipo...</p>
-        </div>
-    );
-
-    return (
-        <div>
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-[#5F2119]">Mi equipo</h1>
-                <p className="text-[#A28C75] text-sm mt-1.5">
-                    {miEquipo ? (miEquipo.Nombre || '—') : 'Sin equipo asignado'}
-                </p>
-            </div>
-            {!miEquipo ? (
-                <div className="bg-white rounded-2xl border border-[#E8E4E1] p-16 text-center">
-                    <div className="w-14 h-14 bg-[#F4F1EE] rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A28C75" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" /></svg>
-                    </div>
-                    <p className="text-base font-bold text-[#5F2119]">Sin equipo</p>
-                    <p className="text-sm text-[#A28C75] mt-1">No perteneces a ningún equipo todavía</p>
-                </div>
-            ) : (
-                <>
-                    {/* Info del equipo */}
-                    <div className="bg-[#5F2119] rounded-2xl p-6 border border-[#7C2220] mb-5 flex items-center gap-5">
-                        <div className="w-12 h-12 rounded-xl bg-[#7C2220] flex items-center justify-center text-base font-black text-[#D7C1A8] shrink-0">
-                            {(miEquipo.Siglas || (miEquipo.Nombre || '?').slice(0, 2)).toUpperCase()}
-                        </div>
-                        <div>
-                            <p className="text-lg font-bold text-[#F4F1EE]">{miEquipo.Nombre}</p>
-                            <p className="text-xs text-[#D7C1A8]/60 mt-0.5">Capitán: {miEquipo.Capitan || miEquipo.capitan || '—'}</p>
-                        </div>
-                    </div>
-                    {/* Miembros */}
-                    <div className="space-y-2">
-                        {miembros.map((m, i) => (
-                            <div key={i} className="bg-white rounded-2xl border border-[#E8E4E1] px-6 py-4 flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full bg-[#7C2220]/10 flex items-center justify-center text-sm font-bold text-[#7C2220] shrink-0">
-                                    {iniciales(m.Nombre_Completo || m.Nickname)}
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-sm font-bold text-[#5F2119]">{m.Nombre_Completo || '—'}</p>
-                                    <p className="text-xs text-[#A28C75] mt-0.5">@{m.Nickname || ''}</p>
-                                </div>
-                                {m.Es_Capitan === 1 && <Badge estado="Capitán" />}
-                            </div>
-                        ))}
-                    </div>
-                </>
-            )}
-        </div>
-    );
-};
-
-const VistaNotificaciones = ({ onRefreshCount }) => {
-    const [notifs, setNotifs] = useState([]);
+    const [inscripciones, setInscripciones] = useState([]);
+    const [busqueda, setBusqueda] = useState('');
+    const [formInscribir, setFormInscribir] = useState(null);
+    const [nombre, setNombre] = useState('');
+    const [error, setError] = useState('');
     const usuario = getUser();
 
     const cargar = () => {
-        if (!usuario?.id) return;
-        fetch(`${API}/notificaciones/usuario/${usuario.id}`, { headers: getHeaders() })
+        const h = getHeaders();
+        const uid = Number(usuario?.Id_Usuario || usuario?.id || 0);
+        fetch(`${API}/torneo`, { headers: h })
+            .then(r => r.json())
+            .then(d => setTorneos(Array.isArray(d) ? d : []))
+            .catch(() => { });
+
+        fetch(`${API}/participantes`, { headers: h })
             .then(r => r.json())
             .then(d => {
-                const l = Array.isArray(d) ? d : d?.data || [];
-                setNotifs(l);
-                if (onRefreshCount) onRefreshCount(l.filter(n => !n.Leido).length);
+                const all = Array.isArray(d) ? d : [];
+                setInscripciones(all.filter(p => Number(p.Id_Usuario) === uid));
             }).catch(() => { });
     };
+
     useEffect(() => { cargar(); }, []);
 
-    const marcarLeida = async (id) => {
-        await fetch(`${API}/notificaciones/leer/${id}`, { method: 'PATCH', headers: getHeaders() }).catch(() => { });
-        cargar();
-    };
-    const marcarTodas = async () => {
-        await Promise.all(notifs.filter(n => !n.Leido).map(n =>
-            fetch(`${API}/notificaciones/leer/${n.Id_Notificacion}`, { method: 'PATCH', headers: getHeaders() })
-        ));
-        cargar();
+    const inscribirse = async () => {
+        setError('');
+        const uid = Number(usuario?.Id_Usuario || usuario?.id || 0);
+        try {
+            const res = await fetch(`${API}/participantes`, {
+
+                method: 'POST', headers: getHeaders(),
+                body: JSON.stringify({
+                    Id_Torneo: formInscribir,
+                    Id_Usuario: uid,
+                    Nombre_En_Torneo: nombre || (usuario?.Nickname || usuario?.nickname || `Usuario #${uid}`),
+                }),
+            });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Error al inscribirse'); }
+            setFormInscribir(null); setNombre('');
+            cargar();
+        } catch (err) { setError(err.message); }
     };
 
-    const noLeidas = notifs.filter(n => !n.Leido).length;
+    const yaInscrito = id => inscripciones.some(i => Number(i.Id_Torneo) === Number(id));
+
+    const lista = busqueda
+        ? torneos.filter(t => t.Nombre.toLowerCase().includes(busqueda.toLowerCase()))
+        : torneos;
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-[#5F2119]">Notificaciones</h1>
-                    <p className="text-[#A28C75] text-sm mt-1.5">{noLeidas} sin leer</p>
-                </div>
-                {noLeidas > 0 && (
-                    <button onClick={marcarTodas}
-                        className="text-xs font-bold text-[#7C2220] border border-[#D7C1A8] px-4 py-2.5 rounded-2xl hover:bg-[#D7C1A8]/20 transition-colors uppercase tracking-wider">
-                        Marcar todas como leídas
-                    </button>
-                )}
+        <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <PageHeader title="Torneos" subtitle={`${torneos.length} torneos en el sistema`} />
+                <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar torneo..."
+                    style={{ background: 'var(--luxe-white)', border: '1px solid var(--luxe-sand)', borderRadius: '4px', padding: '9px 14px', fontSize: '12px', color: 'var(--luxe-black)', outline: 'none', width: '200px' }} />
             </div>
 
-            {notifs.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-[#E8E4E1] p-16 text-center">
-                    <div className="w-14 h-14 bg-[#F4F1EE] rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A28C75" strokeWidth="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" /></svg>
-                    </div>
-                    <p className="text-base font-bold text-[#5F2119]">Sin notificaciones</p>
-                    <p className="text-sm text-[#A28C75] mt-1">Estás al día</p>
-                </div>
-            ) : (
-                <div className="space-y-2">
-                    {notifs.map(n => (
-                        <div key={n.Id_Notificacion}
-                            className={`rounded-2xl border px-6 py-4 flex items-start gap-4 transition-opacity
-                                ${!n.Leido ? 'bg-white border-[#D7C1A8]' : 'bg-[#F4F1EE] border-[#E8E4E1] opacity-50'}`}>
-                            <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${!n.Leido ? 'bg-[#7C2220]' : 'bg-[#D7C1A8]'}`} />
-                            <div className="flex-1 min-w-0">
-                                <p className={`text-sm ${!n.Leido ? 'font-bold text-[#5F2119]' : 'font-medium text-[#A28C75]'}`}>{n.Titulo}</p>
-                                <p className="text-xs text-[#A28C75] mt-0.5">{n.Mensaje}</p>
-                                <p className="text-[11px] text-[#D7C1A8] mt-1.5">
-                                    {n.Fecha_Envio ? new Date(n.Fecha_Envio).toLocaleString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
-                                </p>
-                            </div>
-                            {!n.Leido && (
-                                <button onClick={() => marcarLeida(n.Id_Notificacion)}
-                                    className="text-xs font-bold text-[#7C2220] hover:underline shrink-0 uppercase tracking-wider">
-                                    Leído
-                                </button>
-                            )}
+            {formInscribir && (
+                <Card style={{ marginBottom: '16px', padding: '20px' }}>
+                    <p style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--luxe-taupe)', marginBottom: '12px' }}>Inscripción al torneo #{formInscribir}</p>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+                        <div style={{ flex: 1 }}>
+                            <Input label="Nombre en el torneo"
+                                value={nombre}
+                                onChange={e => setNombre(e.target.value)}
+                                placeholder={usuario?.Nickname || 'Tu nombre en el torneo'} />
                         </div>
-                    ))}
-                </div>
+                        <Btn variant="wine" onClick={inscribirse}>Inscribirse</Btn>
+                        <Btn variant="ghost" onClick={() => { setFormInscribir(null); setError(''); }}>Cancelar</Btn>
+                    </div>
+                    {error && <p style={{ fontSize: '11px', color: 'var(--luxe-wine)', marginTop: '8px' }}>{error}</p>}
+                </Card>
             )}
-        </div>
+
+            <Card>
+                {lista.length === 0 ? <EmptyState msg="Sin torneos disponibles" /> : lista.map(t => {
+                    const inscrito = yaInscrito(t.Id_Torneo);
+                    const abierto = t.Estado === 'Inscripciones';
+                    return (
+                        <Row key={t.Id_Torneo}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--luxe-black)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.Nombre}</p>
+                                <p style={{ fontSize: '11px', color: 'var(--luxe-taupe)' }}>{t.Formato} · Max: {t.Max_Participantes}</p>
+                            </div>
+                            <Badge estado={t.Estado} />
+                            {abierto && !inscrito && (
+                                <Btn small variant="wine" onClick={() => { setFormInscribir(t.Id_Torneo); setNombre(''); setError(''); }}>Inscribirse</Btn>
+                            )}
+                            {inscrito && <Badge estado="Aceptado" />}
+                        </Row>
+                    );
+                })}
+            </Card>
+        </>
     );
 };
 
-const VistaSolicitudRol = () => {
-    const [rol, setRol] = useState('');
-    const [motivo, setMotivo] = useState('');
-    const [status, setStatus] = useState({ msg: '', ok: null });
+/* ── Mi Equipo ── */
+const VistaMiEquipo = () => {
+    const [miEquipo, setMiEquipo] = useState(null);
+    const [jugadores, setJugadores] = useState([]);
+    const [equiposEnLos, setEquiposEnLos] = useState([]);
+    const [crearForm, setCrearForm] = useState(false);
+    const [formEquipo, setFormEquipo] = useState({ nombre: '', siglas: '' });
+    const [addNick, setAddNick] = useState('');
+    const [error, setError] = useState('');
     const usuario = getUser();
 
-    const enviar = async (e) => {
-        e.preventDefault();
-        if (!rol) { setStatus({ msg: 'Selecciona un rol primero', ok: false }); return; }
-        try {
-            const res = await fetch(`${API}/solicitudes/pedir`, {
-                method: 'POST', headers: getHeaders(),
-                body: JSON.stringify({ Id_Usuario: usuario?.id, Rol_Solicitado: parseInt(rol), Motivo: motivo || null, Estado: 'Pendiente' }),
-            });
-            if (!res.ok) throw new Error();
-            setStatus({ msg: '¡Solicitud enviada! El administrador la revisará pronto.', ok: true });
-            setRol(''); setMotivo('');
-        } catch { setStatus({ msg: 'Error al enviar. Intenta de nuevo.', ok: false }); }
+    const cargar = () => {
+        const h = getHeaders();
+        const uid = Number(usuario?.Id_Usuario || usuario?.id || 0);
+
+
+        fetch(`${API}/equipos`, { headers: h })
+            .then(r => r.json())
+            .then(d => {
+                const todos = Array.isArray(d) ? d : [];
+                const eq = todos.find(e => Number(e.Id_Capitan) === uid) || null;
+                setMiEquipo(eq);
+                if (eq) {
+
+                    fetch(`${API}/equipo-jugadores/equipo/${eq.Id_Equipo}`, { headers: h })
+                        .then(r => r.json())
+                        .then(j => setJugadores(Array.isArray(j) ? j : []))
+                        .catch(() => { });
+                }
+            }).catch(() => { });
+
+
+        fetch(`${API}/equipo-jugadores`, { headers: h })
+            .then(r => r.json())
+            .then(d => {
+                const todos = Array.isArray(d) ? d : [];
+                setEquiposEnLos(todos.filter(e => Number(e.Id_Usuario) === uid));
+            }).catch(() => { });
     };
 
-    const inp = "w-full bg-[#F4F1EE] p-4 rounded-2xl outline-none text-sm text-[#5F2119] placeholder-[#A28C75]";
+    useEffect(() => { cargar(); }, []);
+
+    const crearEquipo = async () => {
+        setError('');
+        const uid = Number(usuario?.Id_Usuario || usuario?.id || 0);
+        try {
+            const res = await fetch(`${API}/equipos`, {
+
+                method: 'POST', headers: getHeaders(),
+                body: JSON.stringify({
+                    Id_Capitan: uid,
+                    Nombre: formEquipo.nombre,
+                    Siglas: formEquipo.siglas || null,
+                }),
+            });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Error al crear equipo'); }
+            setCrearForm(false); setFormEquipo({ nombre: '', siglas: '' });
+            cargar();
+        } catch (err) { setError(err.message); }
+    };
+
+    const agregarJugador = async () => {
+        setError('');
+        if (!miEquipo) return;
+        try {
+
+            const busRes = await fetch(`${API}/usuarios`, { headers: getHeaders() });
+            const busData = await busRes.json();
+            const todos = Array.isArray(busData) ? busData : Array.isArray(busData?.data) ? busData.data : [];
+            const target = todos.find(u =>
+                (u.Nickname || u.nickname || '').toLowerCase() === addNick.toLowerCase()
+            );
+            if (!target) throw new Error('Usuario no encontrado');
+
+            const res = await fetch(`${API}/equipo-jugadores`, {
+
+                method: 'POST', headers: getHeaders(),
+                body: JSON.stringify({
+                    Id_Equipo: miEquipo.Id_Equipo,
+                    Id_Usuario: target.Id_Usuario,
+                }),
+            });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Error al agregar'); }
+            setAddNick('');
+            cargar();
+        } catch (err) { setError(err.message); }
+    };
+
+    const removerJugador = async idUsuario => {
+        if (!miEquipo || !window.confirm('¿Remover este jugador?')) return;
+
+        await fetch(`${API}/equipo-jugadores/${miEquipo.Id_Equipo}/${idUsuario}`, {
+            method: 'DELETE', headers: getHeaders(),
+        }).catch(() => { });
+        cargar();
+    };
 
     return (
-        <div>
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-[#5F2119]">Solicitar cambio de rol</h1>
-                <p className="text-[#A28C75] text-sm mt-1.5">Pide ser Organizador o Árbitro. El Admin decidirá.</p>
-            </div>
-            <div className="bg-white rounded-2xl border border-[#E8E4E1] p-7 max-w-md">
-                <form onSubmit={enviar} className="space-y-5">
-                    <div>
-                        <label className="text-xs font-bold text-[#A28C75] uppercase tracking-wider block mb-2">¿Qué rol deseas?</label>
-                        <select value={rol} onChange={e => setRol(e.target.value)} className={inp}>
-                            <option value="">Seleccionar...</option>
-                            <option value="2">🏆 Organizador — crea y gestiona torneos</option>
-                            <option value="3">⚖️ Árbitro — registra resultados en vivo</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-[#A28C75] uppercase tracking-wider block mb-2">Motivo (opcional)</label>
-                        <textarea value={motivo} onChange={e => setMotivo(e.target.value)} rows={3}
-                            placeholder="Cuéntanos por qué quieres este rol..."
-                            className={`${inp} resize-none`} />
-                    </div>
-                    {status.msg && (
-                        <div className={`p-4 rounded-2xl text-sm font-semibold ${status.ok ? 'bg-[#7C2220]/10 text-[#7C2220]' : 'bg-[#5F2119]/10 text-[#5F2119]'}`}>
-                            {status.msg}
-                        </div>
+        <>
+            <PageHeader title="Mi Equipo" subtitle="Crea y gestiona tu equipo de competición" />
+
+            {!miEquipo ? (
+                <>
+                    {!crearForm ? (
+                        <Card style={{ padding: '2rem', textAlign: 'center' }}>
+                            <p style={{ fontSize: '13px', color: 'var(--luxe-taupe)', marginBottom: '16px' }}>Aún no tienes un equipo. ¡Crea uno y conviértete en capitán!</p>
+                            <Btn onClick={() => setCrearForm(true)}>+ Crear equipo</Btn>
+                        </Card>
+                    ) : (
+                        <Card style={{ padding: '20px', marginBottom: '16px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'end' }}>
+                                <Input label="Nombre del equipo *" value={formEquipo.nombre} onChange={e => setFormEquipo({ ...formEquipo, nombre: e.target.value })} placeholder="Ej: Team Phoenix" />
+                                <Input label="Siglas (opcional)" value={formEquipo.siglas} onChange={e => setFormEquipo({ ...formEquipo, siglas: e.target.value })} placeholder="TPX" />
+                                <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {error && <p style={{ fontSize: '11px', color: 'var(--luxe-wine)' }}>{error}</p>}
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <Btn variant="wine" onClick={crearEquipo}>Crear equipo</Btn>
+                                        <Btn variant="ghost" onClick={() => { setCrearForm(false); setError(''); }}>Cancelar</Btn>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
                     )}
-                    <button type="submit"
-                        className="w-full bg-[#5F2119] text-[#D7C1A8] py-4 rounded-2xl font-bold uppercase tracking-[0.2em] text-xs hover:bg-[#7C2220] transition-colors">
-                        Enviar solicitud
-                    </button>
-                </form>
-            </div>
-        </div>
+
+                    {equiposEnLos.length > 0 && (
+                        <>
+                            <p style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--luxe-taupe)', margin: '16px 0 8px' }}>Equipos donde eres jugador</p>
+                            <Card>
+                                {equiposEnLos.map(e => (
+                                    <Row key={e.Id_Equipo}>
+                                        <Avatar name={e.Nombre || 'Equipo'} />
+                                        <div style={{ flex: 1 }}>
+                                            <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--luxe-black)' }}>{e.Nombre || `Equipo #${e.Id_Equipo}`}</p>
+                                            {e.Siglas && <p style={{ fontSize: '11px', color: 'var(--luxe-taupe)' }}>{e.Siglas}</p>}
+                                        </div>
+                                        <Badge estado="Participante" />
+                                    </Row>
+                                ))}
+                            </Card>
+                        </>
+                    )}
+                </>
+            ) : (
+                <>
+                    <Card style={{ padding: '20px', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <div style={{ width: '52px', height: '52px', borderRadius: '10px', background: 'var(--luxe-wine)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 600, color: 'var(--luxe-cream)' }}>
+                                {(miEquipo.Siglas || miEquipo.Nombre?.slice(0, 2) || 'EQ').toUpperCase()}
+                            </div>
+                            <div>
+                                <p style={{ fontSize: '18px', fontWeight: 500, color: 'var(--luxe-black)' }}>{miEquipo.Nombre}</p>
+                                {miEquipo.Siglas && <p style={{ fontSize: '12px', color: 'var(--luxe-taupe)' }}>{miEquipo.Siglas}</p>}
+                            </div>
+                            <Badge estado="Capitán" />
+                        </div>
+                    </Card>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <p style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--luxe-taupe)' }}>Jugadores ({jugadores.length})</p>
+                    </div>
+
+                    <Card style={{ padding: '16px 20px', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+                            <div style={{ flex: 1 }}>
+                                <Input label="Agregar jugador por nickname"
+                                    value={addNick}
+                                    onChange={e => setAddNick(e.target.value)}
+                                    placeholder="nickname del jugador" />
+                            </div>
+                            <Btn small variant="wine" onClick={agregarJugador}>Agregar</Btn>
+                        </div>
+                        {error && <p style={{ fontSize: '11px', color: 'var(--luxe-wine)', marginTop: '8px' }}>{error}</p>}
+                    </Card>
+
+                    <Card>
+                        {jugadores.length === 0 ? <EmptyState msg="Sin jugadores en el equipo aún" /> : jugadores.map(j => (
+                            <Row key={j.Id_Usuario}>
+                                <Avatar name={j.Nombre_Completo || j.Nickname || `#${j.Id_Usuario}`} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--luxe-black)' }}>{j.Nombre_Completo || '—'}</p>
+                                    <p style={{ fontSize: '11px', color: 'var(--luxe-taupe)' }}>@{j.Nickname || '—'}</p>
+                                </div>
+                                <Btn small variant="ghost" onClick={() => removerJugador(j.Id_Usuario)}>Remover</Btn>
+                            </Row>
+                        ))}
+                    </Card>
+                </>
+            )}
+        </>
     );
 };
 
+/* ── Solicitar Rol ── */
+const VistaSolicitudRol = () => {
+    const [solicitudes, setSolicitudes] = useState([]);
+    const [form, setForm] = useState({ rol: '2', motivo: '' });
+    const [enviado, setEnviado] = useState(false);
+    const [error, setError] = useState('');
+    const usuario = getUser();
+
+    const cargar = () => {
+        const uid = usuario?.Id_Usuario || usuario?.id;
+
+        fetch(`${API}/solicitudes?id_usuario=${uid}`, { headers: getHeaders() })
+            .then(r => r.json())
+            .then(d => setSolicitudes(Array.isArray(d) ? d : []))
+            .catch(() => { });
+    };
+
+    useEffect(() => { cargar(); }, []);
+
+    const enviar = async () => {
+        setError('');
+        const uid = usuario?.Id_Usuario || usuario?.id;
+        try {
+            const res = await fetch(`${API}/solicitudes`, {
+                method: 'POST', headers: getHeaders(),
+                body: JSON.stringify({
+                    id_usuario: uid,
+                    rol_solicitado: Number(form.rol),
+                    motivo: form.motivo,
+                }),
+            });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Error al enviar solicitud'); }
+            setForm({ rol: '2', motivo: '' }); setEnviado(true);
+            cargar();
+        } catch (err) { setError(err.message); }
+    };
+
+    const tienePendiente = solicitudes.some(s => s.Estado === 'Pendiente');
+
+    return (
+        <>
+            <PageHeader title="Solicitar rol" subtitle="Pide ascender a Organizador o Árbitro" />
+
+            {enviado && (
+                <div style={{ background: '#72393F20', border: '1px solid #72393F40', borderRadius: '8px', padding: '14px 20px', marginBottom: '16px' }}>
+                    <p style={{ fontSize: '13px', color: 'var(--luxe-wine)', fontWeight: 500 }}>✓ Solicitud enviada correctamente. El administrador la revisará pronto.</p>
+                </div>
+            )}
+
+            {tienePendiente && (
+                <div style={{ background: '#D0C8BD40', border: '1px solid var(--luxe-sand)', borderRadius: '8px', padding: '14px 20px', marginBottom: '16px' }}>
+                    <p style={{ fontSize: '13px', color: 'var(--luxe-taupe)' }}>Ya tienes una solicitud pendiente de revisión.</p>
+                </div>
+            )}
+
+            {!tienePendiente && (
+                <Card style={{ padding: '20px', marginBottom: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'end' }}>
+                        <Select label="Rol que solicitas *" value={form.rol} onChange={e => setForm({ ...form, rol: e.target.value })}>
+                            <option value="2">Organizador</option>
+                            <option value="3">Árbitro</option>
+                        </Select>
+                        <div style={{ gridColumn: '1/-1' }}>
+                            <label style={{ display: 'block', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--luxe-taupe)', marginBottom: '6px' }}>Motivo *</label>
+                            <textarea
+                                value={form.motivo}
+                                onChange={e => setForm({ ...form, motivo: e.target.value })}
+                                placeholder="Explica por qué deseas obtener este rol y qué experiencia tienes..."
+                                rows={4}
+                                style={{ width: '100%', background: 'var(--luxe-white)', border: '1px solid var(--luxe-sand)', borderRadius: '4px', padding: '10px 14px', fontSize: '13px', color: 'var(--luxe-black)', outline: 'none', fontFamily: 'var(--font-body)', resize: 'vertical', boxSizing: 'border-box' }}
+                                onFocus={e => e.target.style.borderColor = 'var(--luxe-wine)'}
+                                onBlur={e => e.target.style.borderColor = 'var(--luxe-sand)'}
+                            />
+                        </div>
+                        <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {error && <p style={{ fontSize: '11px', color: 'var(--luxe-wine)' }}>{error}</p>}
+                            <Btn variant="wine" onClick={enviar}>Enviar solicitud</Btn>
+                        </div>
+                    </div>
+                </Card>
+            )}
+
+            <p style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--luxe-taupe)', marginBottom: '8px' }}>Historial de solicitudes</p>
+            <Card>
+                {solicitudes.length === 0 ? <EmptyState msg="Sin solicitudes previas" /> : solicitudes.map(s => (
+                    <Row key={s.Id_Solicitud}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--luxe-black)' }}>
+                                {s.Rol_Solicitado === 2 ? 'Organizador' : s.Rol_Solicitado === 3 ? 'Árbitro' : `Rol #${s.Rol_Solicitado}`}
+                            </p>
+                            <p style={{ fontSize: '11px', color: 'var(--luxe-taupe)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.Motivo || '—'}</p>
+                        </div>
+                        <Badge estado={s.Estado} />
+                        <p style={{ fontSize: '11px', color: 'var(--luxe-taupe)', flexShrink: 0 }}>
+                            {s.Fecha_Creacion ? new Date(s.Fecha_Creacion).toLocaleDateString('es') : '—'}
+                        </p>
+                    </Row>
+                ))}
+            </Card>
+        </>
+    );
+};
+
+/* ── Componente principal ── */
 const DashboardParticipante = () => {
     const navigate = useNavigate();
     const [activo, setActivo] = useState('dashboard');
-    const [notifCount, setNotifCount] = useState(0);
     const usuario = getUser();
-
-    useEffect(() => {
-        if (usuario?.id) {
-            fetch(`${API}/notificaciones/usuario/${usuario.id}`, { headers: getHeaders() })
-                .then(r => r.json())
-                .then(d => { const l = Array.isArray(d) ? d : d?.data || []; setNotifCount(l.filter(n => !n.Leido).length); })
-                .catch(() => { });
-        }
-    }, []);
 
     const onLogout = () => { localStorage.removeItem('token'); localStorage.removeItem('usuario'); navigate('/'); };
 
     const vistas = {
-        dashboard: <VistaDashboard setActivo={setActivo} notifCount={notifCount} />,
+        dashboard: <VistaDashboard />,
         torneos: <VistaTorneos />,
-        misequipos: <VistaEquipo />,
-        notificaciones: <VistaNotificaciones onRefreshCount={setNotifCount} />,
+        misequipo: <VistaMiEquipo />,
         solicitud: <VistaSolicitudRol />,
     };
 
     return (
-        <div className="flex min-h-screen bg-[#F4F1EE]">
-            <Sidebar activo={activo} setActivo={setActivo} usuario={usuario} onLogout={onLogout} notifCount={notifCount} />
-            <main className="flex-1 p-8 overflow-auto">{vistas[activo]}</main>
+        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--luxe-cream)' }}>
+            <Sidebar activo={activo} setActivo={setActivo} usuario={usuario} onLogout={onLogout} items={ITEMS} rol="Participante" />
+            <main style={{ flex: 1, padding: '2.5rem', overflowY: 'auto', minWidth: 0 }}>
+                {vistas[activo]}
+            </main>
         </div>
     );
 };
+
 export default DashboardParticipante;

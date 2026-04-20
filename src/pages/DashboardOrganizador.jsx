@@ -1,402 +1,579 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API, getUser, getHeaders, Badge, Sidebar, Card, CardHeader, MetricCard, Btn, Input, Select, PageHeader, EmptyState, Row, Avatar } from './shared.jsx';
 
-const API = 'http://localhost:3000';
-const getUser = () => { try { return JSON.parse(localStorage.getItem('usuario')) || {}; } catch { return {}; } };
-const getHeaders = () => ({
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
-    'admin-sofi': 'mcsofi',
-});
+const ITEMS = [
+    { id: 'dashboard', label: 'Inicio', icon: 'M3 3h7v7H3zM13 3h7v7h-7zM3 13h7v7H3zM13 13h7v7h-7z' },
+    { id: 'torneos', label: 'Mis Torneos', icon: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01' },
+    { id: 'participantes', label: 'Participantes', icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
+    { id: 'fases', label: 'Fases y Grupos', icon: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z' },
+    { id: 'matches', label: 'Partidos', icon: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01' },
+];
 
-const Badge = ({ estado }) => {
-    const map = {
-        'Borrador': 'bg-[#E8E4E1] text-[#5F2119]',
-        'Inscripciones': 'bg-[#D7C1A8]/40 text-[#7C2220]',
-        'En Curso': 'bg-[#7C2220] text-[#F4F1EE]',
-        'Finalizado': 'bg-[#E8E4E1] text-[#A28C75]',
-        'Cancelado': 'bg-[#5F2119]/10 text-[#5F2119]',
-        'Pendiente': 'bg-[#D7C1A8]/50 text-[#7C2220]',
-        'Aceptado': 'bg-[#7C2220]/10 text-[#7C2220]',
-        'Rechazado': 'bg-[#5F2119]/10 text-[#5F2119]',
-        'Individual': 'bg-[#D7C1A8]/40 text-[#7C2220]',
-        'Equipo': 'bg-[#E8E4E1] text-[#5F2119]',
-    };
-    return (
-        <span className={`inline-block text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide ${map[estado] || 'bg-[#E8E4E1] text-[#A28C75]'}`}>
-            {estado}
-        </span>
-    );
-};
-
-const iniciales = n => n ? n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
-
-const Sidebar = ({ activo, setActivo, usuario, onLogout }) => {
-    const items = [
-        { id: 'dashboard', label: 'Dashboard', icon: 'M3 3h7v7H3zM13 3h7v7h-7zM3 13h7v7H3zM13 13h7v7h-7z' },
-        { id: 'torneos', label: 'Mis torneos', icon: 'M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z' },
-        { id: 'inscripciones', label: 'Inscripciones', icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
-        { id: 'posiciones', label: 'Posiciones', icon: 'M18 20V10M12 20V4M6 20v-6' },
-    ];
-    return (
-        <aside className="w-56 bg-[#5F2119] flex flex-col min-h-screen shrink-0">
-            <div className="px-6 py-8 border-b border-[#7C2220]">
-                <h1 className="text-xl font-bold text-[#F4F1EE]">Match<span className="text-[#D7C1A8]">Control</span></h1>
-                <div className="flex items-center gap-3 mt-5">
-                    <div className="w-9 h-9 rounded-full bg-[#7C2220] flex items-center justify-center text-xs font-bold text-[#D7C1A8] shrink-0">
-                        {iniciales(usuario?.nickname)}
-                    </div>
-                    <div>
-                        <p className="text-[#F4F1EE] text-sm font-semibold leading-none">{usuario?.nickname || 'Organizador'}</p>
-                        <span className="inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F4F1EE]/10 text-[#D7C1A8] uppercase tracking-widest">Organizador</span>
-                    </div>
-                </div>
-            </div>
-            <nav className="flex-1 py-4 px-3 space-y-0.5">
-                {items.map(item => (
-                    <button key={item.id} onClick={() => setActivo(item.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all text-left ${activo === item.id ? 'bg-[#7C2220] text-[#F4F1EE]' : 'text-[#D7C1A8]/60 hover:bg-[#7C2220]/40 hover:text-[#F4F1EE]'}`}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={item.icon} /></svg>
-                        {item.label}
-                    </button>
-                ))}
-            </nav>
-            <button onClick={onLogout} className="flex items-center gap-3 mx-3 mb-4 px-4 py-3 rounded-xl text-sm text-[#D7C1A8]/40 hover:bg-[#7C2220]/30 hover:text-[#D7C1A8] transition-all">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
-                Cerrar sesión
-            </button>
-        </aside>
-    );
-};
-
-const VistaDashboard = ({ setActivo }) => {
+/* ── Dashboard ── */
+const VistaDashboard = () => {
     const [torneos, setTorneos] = useState([]);
-    const [disciplinas, setDisciplinas] = useState([]);
-    const [pendientes, setPendientes] = useState([]);
+    const [participantes, setParticipantes] = useState([]);
 
     useEffect(() => {
-        fetch(`${API}/torneo`, { headers: getHeaders() }).then(r => r.json()).then(d => setTorneos(Array.isArray(d) ? d : d?.data || [])).catch(() => { });
-        fetch(`${API}/disciplina`, { headers: getHeaders() }).then(r => r.json()).then(d => setDisciplinas(Array.isArray(d) ? d : d?.data || [])).catch(() => { });
-        fetch(`${API}/participantes`, { headers: getHeaders() }).then(r => r.json())
-            .then(d => { const l = Array.isArray(d) ? d : d?.data || []; setPendientes(l.filter(p => (p.Estado_Inscripcion || p.estado) === 'Pendiente')); }).catch(() => { });
+        const h = getHeaders();
+        fetch(`${API}/torneo`, { headers: h })
+            .then(r => r.json())
+            .then(d => {
+                const lista = Array.isArray(d) ? d
+                    : Array.isArray(d?.data) ? d.data
+                        : Array.isArray(d?.torneos) ? d.torneos : [];
+                setTorneos(lista);
+            }).catch(() => { });
+        fetch(`${API}/participantes`, { headers: h })
+            .then(r => r.json())
+            .then(d => setParticipantes(Array.isArray(d) ? d : d?.data || []))
+            .catch(() => { });
     }, []);
 
+    const misTorneos = torneos;
+    const activos = misTorneos.filter(t => t.Estado === 'En Curso' || t.Estado === 'Inscripciones');
+    const pendientes = participantes.filter(p => p.Estado_Inscripcion === 'Pendiente');
+
     return (
-        <div>
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-[#5F2119]">Panel del organizador</h1>
-                <p className="text-[#A28C75] text-sm mt-1.5">Gestiona tus torneos y participantes</p>
+        <>
+            <PageHeader title="Panel del Organizador" subtitle="Gestión de tus torneos y eventos" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '1.5rem' }}>
+                <MetricCard label="Mis torneos" value={misTorneos.length} accent />
+                <MetricCard label="Torneos activos" value={activos.length} />
+                <MetricCard label="Total torneos" value={torneos.length} />
+                <MetricCard label="Inscripciones pend." value={pendientes.length} />
             </div>
-
-            <div className="grid grid-cols-3 gap-4 mb-8">
-                {[['Torneos', torneos.length, true], ['Inscripciones pendientes', pendientes.length, false], ['Disciplinas disponibles', disciplinas.length, false]].map(([label, value, accent]) => (
-                    <div key={label} className={`rounded-2xl p-6 border ${accent ? 'bg-[#5F2119] border-[#7C2220]' : 'bg-white border-[#E8E4E1]'}`}>
-                        <p className={`text-[11px] uppercase tracking-widest font-semibold mb-3 ${accent ? 'text-[#D7C1A8]/60' : 'text-[#A28C75]'}`}>{label}</p>
-                        <p className={`text-4xl font-bold ${accent ? 'text-[#F4F1EE]' : 'text-[#5F2119]'}`}>{value}</p>
-                    </div>
-                ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-5">
-                <div className="bg-white rounded-2xl border border-[#E8E4E1] overflow-hidden">
-                    <div className="px-6 py-4 border-b border-[#F4F1EE]">
-                        <h3 className="text-sm font-bold text-[#5F2119] uppercase tracking-widest">Torneos recientes</h3>
-                    </div>
-                    <div className="divide-y divide-[#F4F1EE]">
-                        {torneos.length === 0 && <p className="px-6 py-8 text-sm text-[#A28C75] text-center">Sin torneos</p>}
-                        {torneos.slice(0, 5).map(t => (
-                            <div key={t.Id_Torneo} className="px-6 py-4 flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-semibold text-[#5F2119] truncate max-w-[150px]">{t.Nombre}</p>
-                                    <p className="text-xs text-[#A28C75] mt-0.5">{t.Formato}</p>
-                                </div>
-                                <Badge estado={t.Estado} />
+            <Card>
+                <CardHeader title="Mis torneos recientes" />
+                {misTorneos.length === 0 ? <EmptyState msg="Aún no has creado torneos" /> :
+                    misTorneos.slice(0, 8).map(t => (
+                        <Row key={t.Id_Torneo}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--luxe-black)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.Nombre}</p>
+                                <p style={{ fontSize: '11px', color: 'var(--luxe-taupe)', marginTop: '2px' }}>{t.Formato} · Max: {t.Max_Participantes}</p>
                             </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-2xl border border-[#E8E4E1] overflow-hidden">
-                    <div className="px-6 py-4 border-b border-[#F4F1EE] flex justify-between items-center">
-                        <h3 className="text-sm font-bold text-[#5F2119] uppercase tracking-widest">Pendientes</h3>
-                        {pendientes.length > 0 && (
-                            <button onClick={() => setActivo('inscripciones')} className="text-xs font-bold text-[#7C2220] hover:underline">Ver todas →</button>
-                        )}
-                    </div>
-                    <div className="divide-y divide-[#F4F1EE]">
-                        {pendientes.length === 0 && (
-                            <div className="px-6 py-8 text-center">
-                                <p className="text-sm font-semibold text-[#5F2119]">Todo al día</p>
-                                <p className="text-xs text-[#A28C75] mt-1">Sin inscripciones pendientes</p>
-                            </div>
-                        )}
-                        {pendientes.slice(0, 5).map(p => (
-                            <div key={p.Id_Participante || p.id} className="px-6 py-4 flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-[#7C2220]/10 flex items-center justify-center text-xs font-bold text-[#7C2220] shrink-0">
-                                    {iniciales(p.Nombre_En_Torneo || '?')}
-                                </div>
-                                <p className="flex-1 text-sm font-semibold text-[#5F2119] truncate">{p.Nombre_En_Torneo || '—'}</p>
-                                <Badge estado="Pendiente" />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        </div>
+                            <Badge estado={t.Estado} />
+                        </Row>
+                    ))
+                }
+            </Card>
+        </>
     );
 };
+
+/* ── Torneos ── */
 
 const VistaTorneos = () => {
     const [torneos, setTorneos] = useState([]);
     const [disciplinas, setDisciplinas] = useState([]);
     const [orgs, setOrgs] = useState([]);
-    const [filtro, setFiltro] = useState('');
-    const [mostrarForm, setMostrarForm] = useState(false);
-    const [form, setForm] = useState({ Nombre: '', Id_Disciplina: '', Id_Organizacion: '', Formato: 'Eliminacion Directa', Max_Participantes: 16 });
+    const [mostrar, setMostrar] = useState(false);
+    const [form, setForm] = useState({ nombre: '', id_disciplina: '', id_organizacion: '', formato: 'Eliminacion Directa', max_participantes: '', fecha_inicio: '', fecha_fin: '' });
+    const [error, setError] = useState('');
     const usuario = getUser();
 
     const cargar = () => {
-        fetch(`${API}/torneo`, { headers: getHeaders() }).then(r => r.json()).then(d => setTorneos(Array.isArray(d) ? d : d?.data || [])).catch(() => { });
-    };
-    useEffect(() => {
-        cargar();
-        fetch(`${API}/disciplina`, { headers: getHeaders() }).then(r => r.json()).then(d => setDisciplinas(Array.isArray(d) ? d : d?.data || [])).catch(() => { });
-        fetch(`${API}/organizacion`, { headers: getHeaders() }).then(r => r.json()).then(d => setOrgs(Array.isArray(d) ? d : d?.data || [])).catch(() => { });
-    }, []);
-
-    const cambiarEstado = async (id, estado) => {
-        if (!estado) return;
-        await fetch(`${API}/torneo/${id}/estado`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify({ estado }) }).catch(() => { });
-        cargar();
+        const h = getHeaders();
+        fetch(`${API}/torneo`, { headers: h }).then(r => r.json()).then(d => setTorneos(Array.isArray(d) ? d : [])).catch(() => { });
+        fetch(`${API}/disciplina`, { headers: h }).then(r => r.json()).then(d => setDisciplinas(Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [])).catch(() => { });
+        fetch(`${API}/organizacion`, { headers: h }).then(r => r.json()).then(d => setOrgs(Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [])).catch(() => { });
     };
 
-    const crearTorneo = async (e) => {
-        e.preventDefault();
-        await fetch(`${API}/torneo`, {
-            method: 'POST', headers: getHeaders(),
-            body: JSON.stringify({ ...form, Id_Creador: usuario?.id || 1, Max_Participantes: parseInt(form.Max_Participantes) }),
-        }).catch(() => { });
-        setMostrarForm(false);
-        cargar();
-    };
-
-    const lista = filtro ? torneos.filter(t => t.Estado === filtro) : torneos;
-    const inp = "w-full bg-[#F4F1EE] p-3.5 rounded-2xl outline-none text-sm text-[#5F2119] placeholder-[#A28C75]";
-
-    return (
-        <div>
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-[#5F2119]">Mis torneos</h1>
-                    <p className="text-[#A28C75] text-sm mt-1.5">Crea y gestiona tus torneos</p>
-                </div>
-                <button onClick={() => setMostrarForm(!mostrarForm)}
-                    className="bg-[#5F2119] text-[#D7C1A8] text-xs font-bold px-5 py-3 rounded-2xl hover:bg-[#7C2220] transition-colors uppercase tracking-widest">
-                    {mostrarForm ? 'Cancelar' : '+ Nuevo torneo'}
-                </button>
-            </div>
-
-            {mostrarForm && (
-                <form onSubmit={crearTorneo} className="bg-white rounded-2xl p-6 border border-[#E8E4E1] mb-6 grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                        <label className="text-xs text-[#A28C75] uppercase tracking-wider block mb-2">Nombre del torneo</label>
-                        <input required value={form.Nombre} onChange={e => setForm({ ...form, Nombre: e.target.value })} className={inp} placeholder="Ej: Copa Primavera 2026" />
-                    </div>
-                    <div>
-                        <label className="text-xs text-[#A28C75] uppercase tracking-wider block mb-2">Disciplina</label>
-                        <select required value={form.Id_Disciplina} onChange={e => setForm({ ...form, Id_Disciplina: e.target.value })} className={inp}>
-                            <option value="">Seleccionar...</option>
-                            {disciplinas.map(d => <option key={d.Id_Disciplina} value={d.Id_Disciplina}>{d.Nombre}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-xs text-[#A28C75] uppercase tracking-wider block mb-2">Organización</label>
-                        <select required value={form.Id_Organizacion} onChange={e => setForm({ ...form, Id_Organizacion: e.target.value })} className={inp}>
-                            <option value="">Seleccionar...</option>
-                            {orgs.map(o => <option key={o.id || o.Id_Organizacion} value={o.id || o.Id_Organizacion}>{o.nombre || o.Nombre}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-xs text-[#A28C75] uppercase tracking-wider block mb-2">Formato</label>
-                        <select value={form.Formato} onChange={e => setForm({ ...form, Formato: e.target.value })} className={inp}>
-                            <option>Eliminacion Directa</option>
-                            <option>Round Robin</option>
-                            <option>Grupos</option>
-                            <option>Suizo</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-xs text-[#A28C75] uppercase tracking-wider block mb-2">Máx. participantes</label>
-                        <input type="number" min="2" value={form.Max_Participantes} onChange={e => setForm({ ...form, Max_Participantes: e.target.value })} className={inp} />
-                    </div>
-                    <div className="col-span-2">
-                        <button type="submit" className="bg-[#5F2119] text-[#D7C1A8] text-xs font-bold px-6 py-3 rounded-2xl hover:bg-[#7C2220] transition-colors uppercase tracking-widest">
-                            Crear torneo
-                        </button>
-                    </div>
-                </form>
-            )}
-
-            <div className="flex gap-2 mb-5 flex-wrap">
-                {['', 'Borrador', 'Inscripciones', 'En Curso', 'Finalizado'].map(f => (
-                    <button key={f} onClick={() => setFiltro(f)}
-                        className={`text-[11px] px-4 py-2 rounded-full font-bold transition-colors uppercase tracking-wider ${filtro === f ? 'bg-[#5F2119] text-[#D7C1A8]' : 'bg-white border border-[#E8E4E1] text-[#A28C75] hover:border-[#D7C1A8]'}`}>
-                        {f || 'Todos'}
-                    </button>
-                ))}
-            </div>
-
-            <div className="bg-white rounded-2xl border border-[#E8E4E1] overflow-hidden">
-                <div className="divide-y divide-[#F4F1EE]">
-                    {lista.length === 0 && <p className="px-6 py-10 text-sm text-[#A28C75] text-center">Sin torneos</p>}
-                    {lista.map(t => (
-                        <div key={t.Id_Torneo} className="px-6 py-4 flex items-center gap-5">
-                            <div className="w-10 h-10 rounded-xl bg-[#F4F1EE] flex items-center justify-center shrink-0">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#A28C75" strokeWidth="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z" /></svg>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-[#5F2119] truncate">{t.Nombre}</p>
-                                <p className="text-xs text-[#A28C75] mt-0.5">{t.Formato} · {t.Max_Participantes} participantes</p>
-                            </div>
-                            <Badge estado={t.Estado} />
-                            <select onChange={e => cambiarEstado(t.Id_Torneo, e.target.value)}
-                                className="text-xs bg-[#F4F1EE] border-0 rounded-xl px-3 py-2 text-[#5F2119] outline-none font-semibold cursor-pointer">
-                                <option value="">Cambiar estado...</option>
-                                {['Inscripciones', 'En Curso', 'Finalizado', 'Cancelado'].map(e => <option key={e} value={e}>{e}</option>)}
-                            </select>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const VistaInscripciones = () => {
-    const [participantes, setParticipantes] = useState([]);
-
-    const cargar = () => {
-        fetch(`${API}/participantes`, { headers: getHeaders() }).then(r => r.json())
-            .then(d => setParticipantes(Array.isArray(d) ? d : d?.data || [])).catch(() => { });
-    };
     useEffect(() => { cargar(); }, []);
 
-    const actualizar = async (id, estado) => {
-        await fetch(`${API}/participantes/${id}`, { method: 'PATCH', headers: getHeaders(), body: JSON.stringify({ Estado_Inscripcion: estado }) }).catch(() => { });
+    const crear = async e => {
+        e.preventDefault();
+        setError('');
+        try {
+            const res = await fetch(`${API}/torneo`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify({
+                    id_disciplina: Number(form.id_disciplina),
+                    id_organizacion: Number(form.id_organizacion),
+                    id_creador: usuario?.Id_Usuario || usuario?.id,
+                    nombre: form.nombre,
+                    formato: form.formato,
+                    max_participantes: Number(form.max_participantes),
+                    fecha_inicio: form.fecha_inicio || null,
+                    fecha_fin: form.fecha_fin || null,
+                }),
+            });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Error al crear torneo'); }
+            setMostrar(false);
+            setForm({ nombre: '', id_disciplina: '', id_organizacion: '', formato: 'Eliminacion Directa', max_participantes: '', fecha_inicio: '', fecha_fin: '' });
+            cargar();
+        } catch (err) { setError(err.message); }
+    };
+
+    const cambiarEstado = async (id, estado) => {
+        await fetch(`${API}/torneo/${id}/estado`, {
+            method: 'PUT',
+            headers: getHeaders(),
+            body: JSON.stringify({ estado }),
+        }).catch(() => { });
         cargar();
     };
 
+    const eliminar = async id => {
+        if (!window.confirm('¿Eliminar este torneo y toda su información? Esta acción no se puede deshacer.')) return;
+        await fetch(`${API}/torneo/${id}`, { method: 'DELETE', headers: getHeaders() }).catch(() => { });
+        cargar();
+    };
+
+    const ESTADOS = ['Borrador', 'Inscripciones', 'En Curso', 'Finalizado', 'Cancelado'];
+
     return (
-        <div>
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-[#5F2119]">Inscripciones</h1>
-                <p className="text-[#A28C75] text-sm mt-1.5">Aprueba o rechaza participantes</p>
+        <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+                <PageHeader title="Mis torneos" subtitle={`${torneos.length} torneos en total`} />
+                <Btn onClick={() => { setMostrar(!mostrar); setError(''); }}>{mostrar ? 'Cancelar' : '+ Nuevo torneo'}</Btn>
             </div>
-            <div className="space-y-3">
-                {participantes.length === 0 && (
-                    <div className="bg-white rounded-2xl border border-[#E8E4E1] p-12 text-center">
-                        <p className="text-sm font-bold text-[#5F2119]">Sin inscripciones</p>
-                        <p className="text-xs text-[#A28C75] mt-1">Todavía no hay participantes registrados</p>
-                    </div>
-                )}
-                {participantes.map(p => (
-                    <div key={p.Id_Participante || p.id} className="bg-white rounded-2xl border border-[#E8E4E1] px-6 py-4 flex items-center gap-5">
-                        <div className="w-10 h-10 rounded-full bg-[#7C2220]/10 flex items-center justify-center text-sm font-bold text-[#7C2220] shrink-0">
-                            {iniciales(p.Nombre_En_Torneo || '?')}
+
+            {mostrar && (
+                <Card style={{ marginBottom: '16px', padding: '20px' }}>
+                    <form onSubmit={crear} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', alignItems: 'end' }}>
+                        <Input label="Nombre *" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} required placeholder="Nombre del torneo" />
+                        <Select label="Disciplina *" value={form.id_disciplina} onChange={e => setForm({ ...form, id_disciplina: e.target.value })} required>
+                            <option value="">Seleccionar...</option>
+                            {disciplinas.map(d => <option key={d.Id_Disciplina} value={d.Id_Disciplina}>{d.Nombre}</option>)}
+                        </Select>
+                        <Select label="Organización *" value={form.id_organizacion} onChange={e => setForm({ ...form, id_organizacion: e.target.value })} required>
+                            <option value="">Seleccionar...</option>
+                            {orgs.map(o => <option key={o.Id_Organizacion} value={o.Id_Organizacion}>{o.Nombre}</option>)}
+                        </Select>
+                        <Select label="Formato *" value={form.formato} onChange={e => setForm({ ...form, formato: e.target.value })}>
+                            <option value="Eliminacion Directa">Eliminación Directa</option>
+                            <option value="Round Robin">Round Robin</option>
+                            <option value="Grupos">Grupos</option>
+                            <option value="Suizo">Suizo</option>
+                        </Select>
+                        <Input label="Máx. participantes *" type="number" value={form.max_participantes} onChange={e => setForm({ ...form, max_participantes: e.target.value })} required placeholder="16" />
+                        <Input label="Fecha inicio" type="datetime-local" value={form.fecha_inicio} onChange={e => setForm({ ...form, fecha_inicio: e.target.value })} />
+                        <Input label="Fecha fin" type="datetime-local" value={form.fecha_fin} onChange={e => setForm({ ...form, fecha_fin: e.target.value })} />
+                        <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {error && <p style={{ fontSize: '11px', color: 'var(--luxe-wine)' }}>{error}</p>}
+                            <Btn type="submit">Crear torneo</Btn>
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-[#5F2119]">{p.Nombre_En_Torneo || '—'}</p>
-                            <p className="text-xs text-[#A28C75] mt-0.5">Torneo #{p.Id_Torneo || '—'}</p>
+                    </form>
+                </Card>
+            )}
+
+            <Card>
+                {torneos.length === 0 ? <EmptyState msg="Sin torneos" /> : torneos.map(t => (
+                    <Row key={t.Id_Torneo}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--luxe-black)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.Nombre}</p>
+                            <p style={{ fontSize: '11px', color: 'var(--luxe-taupe)' }}>{t.Formato} · Max: {t.Max_Participantes}</p>
                         </div>
-                        <Badge estado={p.Estado_Inscripcion || p.estado || 'Pendiente'} />
-                        {(p.Estado_Inscripcion === 'Pendiente' || p.estado === 'Pendiente') && (
-                            <div className="flex gap-2 shrink-0">
-                                <button onClick={() => actualizar(p.Id_Participante || p.id, 'Aceptado')}
-                                    className="px-4 py-2 rounded-xl bg-[#5F2119] text-[#D7C1A8] text-xs font-bold hover:bg-[#7C2220] transition-colors uppercase tracking-wider">
-                                    Aprobar
-                                </button>
-                                <button onClick={() => actualizar(p.Id_Participante || p.id, 'Rechazado')}
-                                    className="px-4 py-2 rounded-xl bg-[#E8E4E1] text-[#A28C75] text-xs font-bold hover:bg-[#D7C1A8]/40 transition-colors uppercase tracking-wider">
-                                    Rechazar
-                                </button>
+                        <Badge estado={t.Estado} />
+                        <Select value={t.Estado} onChange={e => cambiarEstado(t.Id_Torneo, e.target.value)}
+                            style={{ fontSize: '10px', padding: '4px 8px', width: 'auto', border: '1px solid var(--luxe-sand)', borderRadius: '4px', background: 'var(--luxe-white)', color: 'var(--luxe-black)', cursor: 'pointer' }}>
+                            {ESTADOS.map(s => <option key={s} value={s}>{s}</option>)}
+                        </Select>
+                        <Btn small variant="danger" onClick={() => eliminar(t.Id_Torneo)}>Eliminar</Btn>
+                    </Row>
+                ))}
+            </Card>
+        </>
+    );
+};
+
+/* ── Participantes ── */
+
+const VistaParticipantes = () => {
+    const [participantes, setParticipantes] = useState([]);
+    const [torneos, setTorneos] = useState([]);
+    const [torneoFiltro, setTorneoFiltro] = useState('');
+
+    const cargar = () => {
+        const h = getHeaders();
+        fetch(`${API}/participantes`, { headers: h })
+            .then(r => r.json())
+            .then(d => setParticipantes(Array.isArray(d) ? d : []))
+            .catch(() => { });
+        fetch(`${API}/torneo`, { headers: h })
+            .then(r => r.json())
+            .then(d => setTorneos(Array.isArray(d) ? d : []))
+            .catch(() => { });
+    };
+
+    useEffect(() => { cargar(); }, []);
+
+    const decidir = async (id, estado) => {
+        await fetch(`${API}/participantes/${id}`, {
+            method: 'PATCH',
+            headers: getHeaders(),
+            body: JSON.stringify({ Estado_Inscripcion: estado }),
+        }).catch(() => { });
+        cargar();
+    };
+
+    const lista = torneoFiltro
+        ? participantes.filter(p => String(p.Id_Torneo) === torneoFiltro)
+        : participantes;
+
+    return (
+        <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <PageHeader title="Participantes" subtitle={`${participantes.length} inscritos en total`} />
+                <select value={torneoFiltro} onChange={e => setTorneoFiltro(e.target.value)}
+                    style={{ background: 'var(--luxe-white)', border: '1px solid var(--luxe-sand)', borderRadius: '4px', padding: '9px 14px', fontSize: '12px', color: 'var(--luxe-black)', outline: 'none', cursor: 'pointer' }}>
+                    <option value="">Todos los torneos</option>
+                    {torneos.map(t => <option key={t.Id_Torneo} value={t.Id_Torneo}>{t.Nombre}</option>)}
+                </select>
+            </div>
+            <Card>
+                {lista.length === 0 ? <EmptyState msg="Sin participantes" /> : lista.map(p => (
+                    <Row key={p.Id_Participante}>
+                        <Avatar name={p.Nombre_En_Torneo || `P#${p.Id_Participante}`} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--luxe-black)' }}>
+                                {p.Nombre_En_Torneo || `Participante #${p.Id_Participante}`}
+                            </p>
+                            <p style={{ fontSize: '11px', color: 'var(--luxe-taupe)' }}>
+                                Torneo #{p.Id_Torneo} · {p.Id_Equipo ? `Equipo #${p.Id_Equipo}` : `Usuario #${p.Id_Usuario}`}
+                            </p>
+                        </div>
+                        <Badge estado={p.Estado_Inscripcion || 'Pendiente'} />
+                        {p.Estado_Inscripcion === 'Pendiente' && (
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                                <Btn small variant="wine" onClick={() => decidir(p.Id_Participante, 'Aceptado')}>Aceptar</Btn>
+                                <Btn small variant="ghost" onClick={() => decidir(p.Id_Participante, 'Rechazado')}>Rechazar</Btn>
                             </div>
                         )}
-                    </div>
+                    </Row>
                 ))}
-            </div>
-        </div>
+            </Card>
+        </>
     );
 };
 
-const VistaPosiciones = () => {
+/* ── Fases y Grupos ── */
+const VistaFasesGrupos = () => {
     const [torneos, setTorneos] = useState([]);
-    const [selTorneo, setSelTorneo] = useState('');
-    const [posiciones, setPosiciones] = useState([]);
+    const [fases, setFases] = useState([]);
+    const [grupos, setGrupos] = useState([]);
+    const [torneoSel, setTorneoSel] = useState('');
+    const [faseSel, setFaseSel] = useState('');
+    const [formFase, setFormFase] = useState({ nombre: '', orden: '1', tipo: 'Eliminacion' });
+    const [formGrupo, setFormGrupo] = useState({ nombre: '' });
+    const [mostrarFase, setMostrarFase] = useState(false);
+    const [mostrarGrupo, setMostrarGrupo] = useState(false);
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        fetch(`${API}/torneo`, { headers: getHeaders() }).then(r => r.json()).then(d => setTorneos(Array.isArray(d) ? d : d?.data || [])).catch(() => { });
+        fetch(`${API}/torneo`, { headers: getHeaders() }).then(r => r.json()).then(d => setTorneos(Array.isArray(d) ? d : [])).catch(() => { });
     }, []);
-    useEffect(() => {
-        if (!selTorneo) return;
-        fetch(`${API}/posiciones/torneo/${selTorneo}`, { headers: getHeaders() }).then(r => r.json())
-            .then(d => setPosiciones(Array.isArray(d) ? d : d?.data || [])).catch(() => { });
-    }, [selTorneo]);
 
-    const medals = ['🥇', '🥈', '🥉'];
+    const cargarFases = idTorneo => {
+        if (!idTorneo) return;
+        fetch(`${API}/fases/torneo/${idTorneo}`, { headers: getHeaders() })
+            .then(r => r.json()).then(d => setFases(Array.isArray(d) ? d : [])).catch(() => { });
+    };
+
+    const cargarGrupos = idFase => {
+        if (!idFase) return;
+        fetch(`${API}/grupos/fase/${idFase}`, { headers: getHeaders() })
+            .then(r => r.json()).then(d => setGrupos(Array.isArray(d) ? d : [])).catch(() => { });
+    };
+
+    const crearFase = async e => {
+        e.preventDefault(); setError('');
+        try {
+            const res = await fetch(`${API}/fases`, {
+                method: 'POST', headers: getHeaders(),
+                body: JSON.stringify({
+                    Id_Torneo: Number(torneoSel),
+                    Nombre: formFase.nombre,
+                    Orden: Number(formFase.orden),
+                    Tipo_Fase: formFase.tipo,
+                }),
+            });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Error'); }
+            setMostrarFase(false); setFormFase({ nombre: '', orden: '1', tipo: 'Eliminacion' });
+            cargarFases(torneoSel);
+        } catch (err) { setError(err.message); }
+    };
+
+    const eliminarFase = async id => {
+        if (!window.confirm('¿Eliminar esta fase?')) return;
+        await fetch(`${API}/fases/${id}`, { method: 'DELETE', headers: getHeaders() })
+        cargarFases(torneoSel);
+    };
+
+    const crearGrupo = async e => {
+        e.preventDefault(); setError('');
+        try {
+            const res = await fetch(`${API}/grupos`, {
+                method: 'POST', headers: getHeaders(),
+                body: JSON.stringify({
+                    Id_Fase: Number(faseSel),   // ← mayúscula
+                    Nombre: formGrupo.nombre,  // ← mayúscula
+                }),
+            });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Error'); }
+            setMostrarGrupo(false); setFormGrupo({ nombre: '' });
+            cargarGrupos(faseSel);
+        } catch (err) { setError(err.message); }
+    };
+
+    const eliminarGrupo = async id => {
+        if (!window.confirm('¿Eliminar este grupo?')) return;
+        await fetch(`${API}/grupos/${id}`, { method: 'DELETE', headers: getHeaders() })
+        cargarGrupos(faseSel);
+    };
 
     return (
-        <div>
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-[#5F2119]">Tabla de posiciones</h1>
-                <p className="text-[#A28C75] text-sm mt-1.5">Clasificación por torneo</p>
-            </div>
-            <select value={selTorneo} onChange={e => setSelTorneo(e.target.value)}
-                className="bg-white border border-[#E8E4E1] px-5 py-3 rounded-2xl outline-none text-sm text-[#5F2119] mb-5 min-w-[280px]">
-                <option value="">— Seleccionar torneo —</option>
-                {torneos.map(t => <option key={t.Id_Torneo} value={t.Id_Torneo}>{t.Nombre}</option>)}
-            </select>
+        <>
+            <PageHeader title="Fases y Grupos" subtitle="Arquitectura de competición por torneo" />
 
-            {!selTorneo ? (
-                <div className="bg-white rounded-2xl border border-[#E8E4E1] p-12 text-center">
-                    <p className="text-sm text-[#A28C75]">Selecciona un torneo para ver la clasificación</p>
-                </div>
-            ) : posiciones.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-[#E8E4E1] p-12 text-center">
-                    <p className="text-sm text-[#A28C75]">Sin posiciones registradas aún</p>
-                </div>
-            ) : (
-                <div className="space-y-2">
-                    {posiciones.map((p, i) => (
-                        <div key={p.Id_Posicion} className={`rounded-2xl border px-6 py-4 flex items-center gap-5 ${i === 0 ? 'bg-[#5F2119] border-[#7C2220]' : 'bg-white border-[#E8E4E1]'}`}>
-                            <span className="text-xl w-8 text-center shrink-0">{medals[i] || <span className="text-sm font-bold text-[#A28C75]">{i + 1}</span>}</span>
-                            <p className={`flex-1 text-sm font-bold ${i === 0 ? 'text-[#F4F1EE]' : 'text-[#5F2119]'}`}>
-                                {p.Participante || p.Nombre_En_Torneo || `#${p.Id_Participante}`}
-                            </p>
-                            {[['Pts', p.Puntos], ['PJ', p.Partidos_Jugados || p.PJ || 0], ['PG', p.Ganados || p.PG || 0], ['PE', p.Empatados || p.PE || 0], ['PP', p.Perdidos || p.PP || 0], ['Dif', p.Diferencia_Score ?? '—']].map(([l, v]) => (
-                                <div key={l} className="text-center min-w-[36px]">
-                                    <p className={`text-[10px] uppercase tracking-wider ${i === 0 ? 'text-[#D7C1A8]/60' : 'text-[#A28C75]'}`}>{l}</p>
-                                    <p className={`text-sm font-bold mt-0.5 ${i === 0 ? 'text-[#D7C1A8]' : 'text-[#5F2119]'}`}>{v}</p>
+            {/* Selector torneo */}
+            <Card style={{ padding: '16px 20px', marginBottom: '16px' }}>
+                <Select label="Seleccionar torneo" value={torneoSel} onChange={e => { setTorneoSel(e.target.value); setFaseSel(''); setFases([]); setGrupos([]); cargarFases(e.target.value); }}>
+                    <option value="">— Elige un torneo —</option>
+                    {torneos.map(t => <option key={t.Id_Torneo} value={t.Id_Torneo}>{t.Nombre}</option>)}
+                </Select>
+            </Card>
+
+            {torneoSel && (
+                <>
+                    {/* Fases */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <p style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--luxe-taupe)' }}>Fases del torneo</p>
+                        <Btn small onClick={() => setMostrarFase(!mostrarFase)}>{mostrarFase ? 'Cancelar' : '+ Fase'}</Btn>
+                    </div>
+                    {mostrarFase && (
+                        <Card style={{ padding: '16px 20px', marginBottom: '12px' }}>
+                            <form onSubmit={crearFase} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+                                <Input label="Nombre *" value={formFase.nombre} onChange={e => setFormFase({ ...formFase, nombre: e.target.value })} required placeholder="Ej: Semifinal" />
+                                <Input label="Orden *" type="number" value={formFase.orden} onChange={e => setFormFase({ ...formFase, orden: e.target.value })} required />
+                                <Select label="Tipo *" value={formFase.tipo} onChange={e => setFormFase({ ...formFase, tipo: e.target.value })}>
+                                    <option value="Grupos">Grupos</option>
+                                    <option value="Eliminacion">Eliminación</option>
+                                    <option value="Round Robin">Round Robin</option>
+                                </Select>
+                                <Btn type="submit">Crear</Btn>
+                            </form>
+                            {error && <p style={{ fontSize: '11px', color: 'var(--luxe-wine)', marginTop: '8px' }}>{error}</p>}
+                        </Card>
+                    )}
+                    <Card style={{ marginBottom: '20px' }}>
+                        {fases.length === 0 ? <EmptyState msg="Sin fases para este torneo" /> : fases.map(f => (
+                            <Row key={f.Id_Fase} style={{ cursor: 'pointer', background: faseSel === String(f.Id_Fase) ? 'var(--luxe-cream)' : 'transparent' }}
+                                onClick={() => { setFaseSel(String(f.Id_Fase)); cargarGrupos(f.Id_Fase); }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--luxe-black)' }}>{f.Nombre}</p>
+                                    <p style={{ fontSize: '11px', color: 'var(--luxe-taupe)' }}>Orden: {f.Orden} · {f.Tipo_Fase}</p>
                                 </div>
-                            ))}
-                        </div>
-                    ))}
-                </div>
+                                {faseSel === String(f.Id_Fase) && <Badge estado="Activo" />}
+                                <Btn small variant="danger" onClick={ev => { ev.stopPropagation(); eliminarFase(f.Id_Fase); }}>Eliminar</Btn>
+                            </Row>
+                        ))}
+                    </Card>
+
+                    {/* Grupos de la fase seleccionada */}
+                    {faseSel && (
+                        <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <p style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--luxe-taupe)' }}>Grupos de la fase</p>
+                                <Btn small onClick={() => setMostrarGrupo(!mostrarGrupo)}>{mostrarGrupo ? 'Cancelar' : '+ Grupo'}</Btn>
+                            </div>
+                            {mostrarGrupo && (
+                                <Card style={{ padding: '16px 20px', marginBottom: '12px' }}>
+                                    <form onSubmit={crearGrupo} style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <Input label="Nombre del grupo *" value={formGrupo.nombre} onChange={e => setFormGrupo({ nombre: e.target.value })} required placeholder="Ej: Grupo A" />
+                                        </div>
+                                        <Btn type="submit">Crear</Btn>
+                                    </form>
+                                </Card>
+                            )}
+                            <Card>
+                                {grupos.length === 0 ? <EmptyState msg="Sin grupos en esta fase" /> : grupos.map(g => (
+                                    <Row key={g.Id_Grupo}>
+                                        <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--luxe-black)', flex: 1 }}>{g.Nombre}</p>
+                                        <Btn small variant="danger" onClick={() => eliminarGrupo(g.Id_Grupo)}>Eliminar</Btn>
+                                    </Row>
+                                ))}
+                            </Card>
+                        </>
+                    )}
+                </>
             )}
-        </div>
+        </>
     );
 };
 
+/* ── Matches / Partidos ── */
+
+const VistaMatches = () => {
+    const [torneos, setTorneos] = useState([]);
+    const [fases, setFases] = useState([]);
+    const [grupos, setGrupos] = useState([]);
+    const [arbitros, setArbitros] = useState([]);
+    const [matches, setMatches] = useState([]);
+    const [torneoSel, setTorneoSel] = useState('');
+    const [faseSel, setFaseSel] = useState('');
+    const [mostrar, setMostrar] = useState(false);
+    const [form, setForm] = useState({ id_grupo: '', id_arbitro: '', fecha_hora: '', ubicacion: '' });
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        const h = getHeaders();
+        fetch(`${API}/torneo`, { headers: h })
+            .then(r => r.json())
+            .then(d => setTorneos(Array.isArray(d) ? d : []))
+        fetch(`${API}/usuarios`, { headers: h })
+            .then(r => r.json())
+            .then(d => setArbitros((Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : []).filter(u => u.Rol === 'Arbitro')))
+            .catch(() => { });
+    }, []);
+
+    const cargarFases = id => {
+        setFaseSel(''); setFases([]); setMatches([]);
+        if (!id) return;
+        fetch(`${API}/fases/torneo/${id}`, { headers: getHeaders() }).then(r => r.json()).then(d => setFases(Array.isArray(d) ? d : [])).catch(() => { });
+    };
+
+    const cargarMatches = id => {
+        setFaseSel(id);
+        if (!id) return;
+        const h = getHeaders();
+        fetch(`${API}/matches/fase/${id}`, { headers: h })
+            .then(r => r.json())
+            .then(d => setMatches(Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : []))
+            .catch(() => { });
+        fetch(`${API}/grupos/fase/${id}`, { headers: h })
+            .then(r => r.json())
+            .then(d => setGrupos(Array.isArray(d) ? d : []))
+            .catch(() => { });
+    };
+    const crear = async e => {
+        e.preventDefault(); setError('');
+        try {
+            const res = await fetch(`${API}/matches`, {
+                method: 'POST', headers: getHeaders(),
+                body: JSON.stringify({
+                    Id_Fase: Number(faseSel),
+                    id_grupo: form.id_grupo ? Number(form.id_grupo) : null,
+                    id_arbitro: form.id_arbitro ? Number(form.id_arbitro) : null,
+                    fecha_hora: form.fecha_hora || null,
+                    Ubicacion: form.ubicacion || 'Por definir',
+                }),
+            });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Error'); }
+            setMostrar(false); setForm({ id_grupo: '', id_arbitro: '', fecha_hora: '', ubicacion: '' });
+            cargarMatches(faseSel);
+        } catch (err) { setError(err.message); }
+    };
+
+    const cambiarEstado = async (id, estado) => {
+        await fetch(`${API}/matches/${id}/estado`, { method: 'PATCH', headers: getHeaders(), body: JSON.stringify({ estado }) }).catch(() => { });
+        cargarMatches(faseSel);
+    };
+
+    const eliminar = async id => {
+        if (!window.confirm('¿Eliminar este partido?')) return;
+        await fetch(`${API}/matches/${id}`, { method: 'DELETE', headers: getHeaders() })
+        cargarMatches(faseSel);
+    };
+
+    const ESTADOS_MATCH = ['Programado', 'En Juego', 'Finalizado', 'Postpuesto'];
+
+    return (
+        <>
+            <PageHeader title="Partidos" subtitle="Logística de encuentros por fase" />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                <Card style={{ padding: '16px 20px' }}>
+                    <Select label="Torneo" value={torneoSel} onChange={e => { setTorneoSel(e.target.value); cargarFases(e.target.value); }}>
+                        <option value="">— Elige torneo —</option>
+                        {torneos.map(t => <option key={t.Id_Torneo} value={t.Id_Torneo}>{t.Nombre}</option>)}
+                    </Select>
+                </Card>
+                <Card style={{ padding: '16px 20px' }}>
+                    <Select label="Fase" value={faseSel} onChange={e => cargarMatches(e.target.value)} disabled={!torneoSel}>
+                        <option value="">— Elige fase —</option>
+                        {fases.map(f => <option key={f.Id_Fase} value={f.Id_Fase}>{f.Nombre}</option>)}
+                    </Select>
+                </Card>
+            </div>
+
+            {faseSel && (
+                <>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+                        <Btn small onClick={() => { setMostrar(!mostrar); setError(''); }}>{mostrar ? 'Cancelar' : '+ Nuevo partido'}</Btn>
+                    </div>
+                    {mostrar && (
+                        <Card style={{ padding: '16px 20px', marginBottom: '12px' }}>
+                            <form onSubmit={crear} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'end' }}>
+                                <Select label="Grupo (opcional)" value={form.id_grupo} onChange={e => setForm({ ...form, id_grupo: e.target.value })}>
+                                    <option value="">Sin grupo</option>
+                                    {grupos.map(g => <option key={g.Id_Grupo} value={g.Id_Grupo}>{g.Nombre}</option>)}
+                                </Select>
+                                <Select label="Árbitro (opcional)" value={form.id_arbitro} onChange={e => setForm({ ...form, id_arbitro: e.target.value })}>
+                                    <option value="">Sin árbitro asignado</option>
+                                    {arbitros.map(a => <option key={a.Id_Usuario} value={a.Id_Usuario}>{a.Nickname || a.Nombre_Completo}</option>)}
+                                </Select>
+                                <Input label="Fecha y hora" type="datetime-local" value={form.fecha_hora} onChange={e => setForm({ ...form, fecha_hora: e.target.value })} />
+                                <Input label="Ubicación" value={form.ubicacion} onChange={e => setForm({ ...form, ubicacion: e.target.value })} placeholder="Sala / Campo / Online" />
+                                <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {error && <p style={{ fontSize: '11px', color: 'var(--luxe-wine)' }}>{error}</p>}
+                                    <Btn type="submit">Crear partido</Btn>
+                                </div>
+                            </form>
+                        </Card>
+                    )}
+                    <Card>
+                        {matches.length === 0 ? <EmptyState msg="Sin partidos en esta fase" /> : matches.map(m => (
+                            <Row key={m.Id_Match}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--luxe-black)' }}>Partido #{m.Id_Match}</p>
+                                    <p style={{ fontSize: '11px', color: 'var(--luxe-taupe)' }}>
+                                        {m.Ubicacion || 'Sin ubicación'} · {m.Fecha_Hora ? new Date(m.Fecha_Hora).toLocaleString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Sin fecha'}
+                                    </p>
+                                </div>
+                                <Badge estado={m.Estado} />
+                                <select value={m.Estado} onChange={e => cambiarEstado(m.Id_Match, e.target.value)}
+                                    style={{ fontSize: '10px', padding: '4px 8px', width: 'auto', border: '1px solid var(--luxe-sand)', borderRadius: '4px', background: 'var(--luxe-white)', color: 'var(--luxe-black)', cursor: 'pointer' }}>
+                                    {ESTADOS_MATCH.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                                <Btn small variant="danger" onClick={() => eliminar(m.Id_Match)}>Eliminar</Btn>
+                            </Row>
+                        ))}
+                    </Card>
+                </>
+            )}
+        </>
+    );
+};
+
+/* ── Componente principal ── */
 const DashboardOrganizador = () => {
     const navigate = useNavigate();
     const [activo, setActivo] = useState('dashboard');
     const usuario = getUser();
+
     const onLogout = () => { localStorage.removeItem('token'); localStorage.removeItem('usuario'); navigate('/'); };
-    const vistas = { dashboard: <VistaDashboard setActivo={setActivo} />, torneos: <VistaTorneos />, inscripciones: <VistaInscripciones />, posiciones: <VistaPosiciones /> };
+
+    const vistas = {
+        dashboard: <VistaDashboard />,
+        torneos: <VistaTorneos />,
+        participantes: <VistaParticipantes />,
+        fases: <VistaFasesGrupos />,
+        matches: <VistaMatches />,
+    };
+
     return (
-        <div className="flex min-h-screen bg-[#F4F1EE]">
-            <Sidebar activo={activo} setActivo={setActivo} usuario={usuario} onLogout={onLogout} />
-            <main className="flex-1 p-8 overflow-auto">{vistas[activo]}</main>
+        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--luxe-cream)' }}>
+            <Sidebar activo={activo} setActivo={setActivo} usuario={usuario} onLogout={onLogout} items={ITEMS} rol="Organizador" />
+            <main style={{ flex: 1, padding: '2.5rem', overflowY: 'auto', minWidth: 0 }}>
+                {vistas[activo]}
+            </main>
         </div>
     );
 };
+
 export default DashboardOrganizador;

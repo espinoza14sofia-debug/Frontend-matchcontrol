@@ -1,330 +1,438 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API, getUser, getHeaders, Badge, Sidebar, Card, CardHeader, MetricCard, Btn, Input, Select, PageHeader, EmptyState, Row } from './shared.jsx';
 
-const API = 'http://localhost:3000';
-const getUser = () => { try { return JSON.parse(localStorage.getItem('usuario')) || {}; } catch { return {}; } };
-const getHeaders = () => ({
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
-    'admin-sofi': 'mcsofi',
-});
+const ITEMS = [
+    { id: 'dashboard', label: 'Inicio', icon: 'M3 3h7v7H3zM13 3h7v7h-7zM3 13h7v7H3zM13 13h7v7h-7z' },
+    { id: 'matches', label: 'Mis Partidos', icon: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01' },
+    { id: 'sanciones', label: 'Sanciones', icon: 'M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z' },
+];
 
-const Badge = ({ estado }) => {
-    const map = { 'Programado': 'bg-[#E8E4E1] text-[#A28C75]', 'En Juego': 'bg-[#7C2220] text-[#F4F1EE]', 'Finalizado': 'bg-[#7C2220]/10 text-[#7C2220]', 'Postpuesto': 'bg-[#5F2119]/10 text-[#5F2119]' };
-    return <span className={`inline-block text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide ${map[estado] || 'bg-[#E8E4E1] text-[#A28C75]'}`}>{estado}</span>;
-};
-
-const iniciales = n => n ? n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
-
-const Sidebar = ({ activo, setActivo, usuario, onLogout }) => {
-    const items = [
-        { id: 'dashboard', label: 'Mis partidos', icon: 'M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z' },
-        { id: 'posiciones', label: 'Posiciones', icon: 'M18 20V10M12 20V4M6 20v-6' },
-    ];
-    return (
-        <aside className="w-56 bg-[#5F2119] flex flex-col min-h-screen shrink-0">
-            <div className="px-6 py-8 border-b border-[#7C2220]">
-                <h1 className="text-xl font-bold text-[#F4F1EE]">Match<span className="text-[#D7C1A8]">Control</span></h1>
-                <div className="flex items-center gap-3 mt-5">
-                    <div className="w-9 h-9 rounded-full bg-[#7C2220] flex items-center justify-center text-xs font-bold text-[#D7C1A8] shrink-0">
-                        {iniciales(usuario?.nickname)}
-                    </div>
-                    <div>
-                        <p className="text-[#F4F1EE] text-sm font-semibold leading-none">{usuario?.nickname || 'Árbitro'}</p>
-                        <span className="inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F4F1EE]/10 text-[#D7C1A8] uppercase tracking-widest">Árbitro</span>
-                    </div>
-                </div>
-            </div>
-            <nav className="flex-1 py-4 px-3 space-y-0.5">
-                {items.map(item => (
-                    <button key={item.id} onClick={() => setActivo(item.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all text-left ${activo === item.id ? 'bg-[#7C2220] text-[#F4F1EE]' : 'text-[#D7C1A8]/60 hover:bg-[#7C2220]/40 hover:text-[#F4F1EE]'}`}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={item.icon} /></svg>
-                        {item.label}
-                    </button>
-                ))}
-            </nav>
-            <button onClick={onLogout} className="flex items-center gap-3 mx-3 mb-4 px-4 py-3 rounded-xl text-sm text-[#D7C1A8]/40 hover:bg-[#7C2220]/30 hover:text-[#D7C1A8] transition-all">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
-                Cerrar sesión
-            </button>
-        </aside>
-    );
-};
-
-const MatchCard = ({ match, onActualizar }) => {
-    const [p1, setP1] = useState('');
-    const [p2, setP2] = useState('');
-    const [sets, setSets] = useState([]);
-    const [participantes, setParticipantes] = useState([]);
-    const [guardando, setGuardando] = useState(false);
+/* ── Dashboard ── */
+const VistaDashboard = () => {
+    const [matches, setMatches] = useState([]);
+    const [sanciones, setSanciones] = useState([]);
 
     useEffect(() => {
-        fetch(`${API}/match-participantes/match/${match.Id_Match}`, { headers: getHeaders() })
-            .then(r => r.json()).then(d => setParticipantes(Array.isArray(d) ? d : [])).catch(() => { });
-        fetch(`${API}/match-set/match/${match.Id_Match}`, { headers: getHeaders() })
-            .then(r => r.json()).then(d => setSets(Array.isArray(d) ? d : [])).catch(() => { });
-    }, [match.Id_Match]);
+        const h = getHeaders();
+        fetch(`${API}/matches`, { headers: h })
+            .then(r => r.json())
+            .then(d => {
+                const all = Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
+                setMatches(all);
+            }).catch(() => { });
+        fetch(`${API}/sancion`, { headers: h })
+            .then(r => r.json())
+            .then(d => setSanciones(Array.isArray(d) ? d : d?.data || []))
+            .catch(() => { });
+    }, []);
 
-    const lado1 = participantes.find(p => p.Lado === 1);
-    const lado2 = participantes.find(p => p.Lado === 2);
-
-    const cambiarEstado = async (estado) => {
-        await fetch(`${API}/matches/${match.Id_Match}`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify({ Estado: estado }) }).catch(() => { });
-        onActualizar();
-    };
-
-    const guardar = async () => {
-        if (!lado1 || !lado2) { alert('No hay participantes asignados a este partido'); return; }
-        setGuardando(true);
-        const s1 = parseInt(p1) || 0;
-        const s2 = parseInt(p2) || 0;
-        try {
-            await fetch(`${API}/match-participantes/${match.Id_Match}/${lado1.Id_Participante}`, {
-                method: 'PATCH', headers: getHeaders(),
-                body: JSON.stringify({ Score_Final: s1, Es_Ganador: s1 > s2 ? 1 : 0 }),
-            });
-            await fetch(`${API}/match-participantes/${match.Id_Match}/${lado2.Id_Participante}`, {
-                method: 'PATCH', headers: getHeaders(),
-                body: JSON.stringify({ Score_Final: s2, Es_Ganador: s2 > s1 ? 1 : 0 }),
-            });
-            for (let i = 0; i < sets.length; i++) {
-                const s = sets[i];
-                if (s._nuevo) {
-                    await fetch(`${API}/match-set`, {
-                        method: 'POST', headers: getHeaders(),
-                        body: JSON.stringify({ Id_Match: match.Id_Match, Numero_Set: i + 1, Mapa_Modo: s.Mapa_Modo || `Set ${i + 1}`, Puntaje_Lado1: s.Puntaje_Lado1 || 0, Puntaje_Lado2: s.Puntaje_Lado2 || 0, Id_Ganador_Set: (s.Puntaje_Lado1 || 0) > (s.Puntaje_Lado2 || 0) ? (lado1?.Id_Participante || null) : (lado2?.Id_Participante || null) }),
-                    }).catch(() => { });
-                }
-            }
-            onActualizar();
-        } catch { alert('Error al guardar el resultado'); }
-        finally { setGuardando(false); }
-    };
-
-    const agregarSet = () => setSets(prev => [...prev, { _nuevo: true, Numero_Set: prev.length + 1, Mapa_Modo: '', Puntaje_Lado1: 0, Puntaje_Lado2: 0 }]);
-    const updateSet = (i, campo, val) => setSets(prev => prev.map((s, idx) => idx === i ? { ...s, [campo]: val } : s));
+    const enJuego = matches.filter(m => m.Estado === 'En Juego');
+    const programados = matches.filter(m => m.Estado === 'Programado');
 
     return (
-        <div className="bg-white rounded-2xl border border-[#E8E4E1] overflow-hidden mb-4">
-            {/* Cabecera del partido */}
-            <div className="px-6 py-3.5 bg-[#F4F1EE] flex items-center justify-between">
-                <p className="text-xs font-bold text-[#A28C75] uppercase tracking-wider">
-                    Partido #{match.Id_Match} · Fase {match.Id_Fase}
-                </p>
-                <div className="flex items-center gap-3">
-                    <Badge estado={match.Estado} />
-                    {match.Ubicacion && <span className="text-xs text-[#A28C75]">📍 {match.Ubicacion}</span>}
-                </div>
+        <>
+            <PageHeader title="Panel del Árbitro" subtitle="Gestión de partidos y disciplina" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '1.5rem' }}>
+                <MetricCard label="Partidos activos" value={enJuego.length} accent />
+                <MetricCard label="Programados" value={programados.length} />
+                <MetricCard label="Total asignados" value={matches.length} />
+                <MetricCard label="Sanciones emitidas" value={sanciones.length} />
             </div>
-
-            <div className="px-6 py-6">
-                {/* Marcador VS */}
-                <div className="flex items-center gap-8 mb-6">
-                    <div className="flex-1 text-center">
-                        <div className="w-10 h-10 rounded-full bg-[#F4F1EE] flex items-center justify-center text-sm font-bold text-[#5F2119] mx-auto mb-2">
-                            {iniciales(lado1?.Nombre_En_Torneo || 'L1')}
+            <Card>
+                <CardHeader title="Partidos asignados" />
+                {matches.length === 0 ? <EmptyState msg="Sin partidos asignados" /> : matches.slice(0, 8).map(m => (
+                    <Row key={m.Id_Match}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: '13px', fontWeight: 500, color: '#332E2B' }}>Partido #{m.Id_Match}</p>
+                            <p style={{ fontSize: '11px', color: '#AD9D8D' }}>
+                                {m.Ubicacion || 'Sin ubicación'} · {m.Fecha_Hora ? new Date(m.Fecha_Hora).toLocaleString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Sin fecha'}
+                            </p>
                         </div>
-                        <p className="text-sm font-bold text-[#5F2119] mb-3 truncate">{lado1?.Nombre_En_Torneo || 'Lado 1'}</p>
-                        <input type="number" min="0" value={p1} onChange={e => setP1(e.target.value)} placeholder="0"
-                            className="w-20 text-center bg-[#F4F1EE] rounded-2xl py-3 text-2xl font-bold text-[#5F2119] outline-none mx-auto block" />
-                    </div>
-                    <div className="text-center shrink-0">
-                        <p className="text-2xl font-black text-[#E8E4E1]">VS</p>
-                    </div>
-                    <div className="flex-1 text-center">
-                        <div className="w-10 h-10 rounded-full bg-[#F4F1EE] flex items-center justify-center text-sm font-bold text-[#5F2119] mx-auto mb-2">
-                            {iniciales(lado2?.Nombre_En_Torneo || 'L2')}
-                        </div>
-                        <p className="text-sm font-bold text-[#5F2119] mb-3 truncate">{lado2?.Nombre_En_Torneo || 'Lado 2'}</p>
-                        <input type="number" min="0" value={p2} onChange={e => setP2(e.target.value)} placeholder="0"
-                            className="w-20 text-center bg-[#F4F1EE] rounded-2xl py-3 text-2xl font-bold text-[#5F2119] outline-none mx-auto block" />
-                    </div>
-                </div>
-
-                {/* Sets */}
-                <div className="border-t border-[#F4F1EE] pt-5 mb-5">
-                    <div className="flex justify-between items-center mb-3">
-                        <p className="text-xs font-bold text-[#A28C75] uppercase tracking-wider">Sets / mapas</p>
-                        <button onClick={agregarSet} className="text-xs font-bold text-[#7C2220] hover:underline uppercase tracking-wider">+ Agregar set</button>
-                    </div>
-                    <div className="space-y-2">
-                        {sets.map((s, i) => (
-                            <div key={i} className="flex items-center gap-3 bg-[#F4F1EE] rounded-xl px-4 py-2.5">
-                                <span className="text-xs font-bold text-[#A28C75] w-12 shrink-0">Set {i + 1}</span>
-                                <input type="number" min="0" value={s.Puntaje_Lado1} onChange={e => updateSet(i, 'Puntaje_Lado1', parseInt(e.target.value) || 0)}
-                                    className="w-12 text-center bg-white rounded-lg py-1.5 text-sm font-bold text-[#5F2119] outline-none" />
-                                <span className="text-[#D7C1A8] font-bold">–</span>
-                                <input type="number" min="0" value={s.Puntaje_Lado2} onChange={e => updateSet(i, 'Puntaje_Lado2', parseInt(e.target.value) || 0)}
-                                    className="w-12 text-center bg-white rounded-lg py-1.5 text-sm font-bold text-[#5F2119] outline-none" />
-                                <input type="text" placeholder="Mapa / modo..." value={s.Mapa_Modo} onChange={e => updateSet(i, 'Mapa_Modo', e.target.value)}
-                                    className="flex-1 bg-white rounded-lg py-1.5 px-3 text-sm text-[#5F2119] outline-none placeholder-[#A28C75]" />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Acciones */}
-                <div className="flex gap-3 flex-wrap">
-                    {match.Estado === 'Programado' && (
-                        <button onClick={() => cambiarEstado('En Juego')}
-                            className="px-5 py-2.5 rounded-xl border-2 border-[#D7C1A8] text-[#7C2220] text-xs font-bold hover:bg-[#D7C1A8]/20 transition-colors uppercase tracking-wider">
-                            ▶ Iniciar partido
-                        </button>
-                    )}
-                    <button onClick={guardar} disabled={guardando}
-                        className="px-5 py-2.5 rounded-xl bg-[#5F2119] text-[#D7C1A8] text-xs font-bold hover:bg-[#7C2220] transition-colors uppercase tracking-wider disabled:opacity-50">
-                        {guardando ? 'Guardando...' : 'Guardar resultado'}
-                    </button>
-                    {match.Estado === 'En Juego' && (
-                        <button onClick={() => cambiarEstado('Finalizado')}
-                            className="px-5 py-2.5 rounded-xl border border-[#E8E4E1] text-[#A28C75] text-xs font-bold hover:bg-[#E8E4E1] transition-colors uppercase tracking-wider">
-                            ✓ Finalizar
-                        </button>
-                    )}
-                </div>
-            </div>
-        </div>
+                        <Badge estado={m.Estado} />
+                    </Row>
+                ))}
+            </Card>
+        </>
     );
 };
+/* ── Mis Partidos ── */
 
-const VistaPartidos = () => {
+const VistaMatches = () => {
     const [matches, setMatches] = useState([]);
+    const [sets, setSets] = useState({});
+    const [expandido, setExpandido] = useState(null);
+    const [formRes, setFormRes] = useState({});
+    const [formSet, setFormSet] = useState({});
+    const [error, setError] = useState('');
+
     const cargar = () => {
-        fetch(`${API}/matches`, { headers: getHeaders() }).then(r => r.json())
-            .then(d => setMatches(Array.isArray(d) ? d : d?.data || [])).catch(() => { });
+        fetch(`${API}/matches`, { headers: getHeaders() })
+            .then(r => r.json())
+            .then(d => {
+                const all = Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
+                setMatches(all);
+            }).catch(() => { });
     };
+
     useEffect(() => { cargar(); }, []);
 
-    const activos = matches.filter(m => m.Estado === 'En Juego' || m.Estado === 'Programado');
-    const finalizados = matches.filter(m => m.Estado === 'Finalizado');
+    const cargarSets = async id => {
+        const res = await fetch(`${API}/match-set/match/${id}`, { headers: getHeaders() });
+        const d = await res.json();
+        setSets(prev => ({ ...prev, [id]: Array.isArray(d) ? d : [] }));
+    };
+
+    const toggleExpand = id => {
+        if (expandido === id) { setExpandido(null); return; }
+        setExpandido(id);
+        cargarSets(id);
+    };
+
+    const registrarResultado = async id => {
+        setError('');
+        const f = formRes[id] || {};
+        try {
+            const res = await fetch(`${API}/matches/${id}/resultado`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify({
+                    IdP1: Number(f.id_ganador) || null,
+                    Score1: Number(f.score1) || 0,
+                    IdP2: null,
+                    Score2: Number(f.score2) || 0,
+                }),
+            });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Error al registrar'); }
+            cargar();
+        } catch (err) { setError(err.message); }
+    };
+
+    const agregarSet = async id => {
+        setError('');
+        const f = formSet[id] || {};
+        try {
+            const matchSets = sets[id] || [];
+            const res = await fetch(`${API}/match-set`, {
+                method: 'POST', headers: getHeaders(),
+                body: JSON.stringify({
+                    Id_Match: id,
+                    Numero_Set: matchSets.length + 1,
+                    Mapa_Modo: f.mapa || null,
+                    Puntaje_Lado1: Number(f.p1) || 0,
+                    Puntaje_Lado2: Number(f.p2) || 0,
+                }),
+            });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Error'); }
+            setFormSet(prev => ({ ...prev, [id]: { mapa: '', p1: '', p2: '' } }));
+            cargarSets(id);
+        } catch (err) { setError(err.message); }
+    };
+
+    const C = { black: '#332E2B', wine: '#72393F', taupe: '#AD9D8D', sand: '#D0C8BD', cream: '#F0E9E3', silver: '#D9D9D9' };
+    const inp = { width: '100%', background: C.cream, border: `1px solid ${C.sand}`, borderRadius: 10, padding: '10px 14px', fontSize: 13, color: C.black, outline: 'none', boxSizing: 'border-box' };
+    const Field = ({ label, children }) => <div><label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: C.taupe, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{label}</label>{children}</div>;
 
     return (
-        <div>
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-[#5F2119]">Mis partidos asignados</h1>
-                <p className="text-[#A28C75] text-sm mt-1.5">Registra resultados en tiempo real</p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4 mb-8">
-                {[['Programados', matches.filter(m => m.Estado === 'Programado').length, false],
-                ['En juego', matches.filter(m => m.Estado === 'En Juego').length, true],
-                ['Finalizados', finalizados.length, false]
-                ].map(([label, value, accent]) => (
-                    <div key={label} className={`rounded-2xl p-6 border ${accent ? 'bg-[#5F2119] border-[#7C2220]' : 'bg-white border-[#E8E4E1]'}`}>
-                        <p className={`text-[11px] uppercase tracking-widest font-semibold mb-3 ${accent ? 'text-[#D7C1A8]/60' : 'text-[#A28C75]'}`}>{label}</p>
-                        <p className={`text-4xl font-bold ${accent ? 'text-[#F4F1EE]' : 'text-[#5F2119]'}`}>{value}</p>
-                    </div>
-                ))}
-            </div>
-
-            {activos.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-[#E8E4E1] p-16 text-center mb-5">
-                    <div className="w-14 h-14 bg-[#F4F1EE] rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A28C75" strokeWidth="1.5"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z" /></svg>
-                    </div>
-                    <p className="text-base font-bold text-[#5F2119]">Sin partidos activos</p>
-                    <p className="text-sm text-[#A28C75] mt-1">Los partidos asignados a ti aparecerán aquí</p>
-                </div>
-            ) : (
-                <>
-                    <p className="text-xs font-bold text-[#A28C75] uppercase tracking-widest mb-4">Partidos activos</p>
-                    {activos.map(m => <MatchCard key={m.Id_Match} match={m} onActualizar={cargar} />)}
-                </>
-            )}
-
-            {finalizados.length > 0 && (
-                <>
-                    <p className="text-xs font-bold text-[#A28C75] uppercase tracking-widest mb-4 mt-6">Finalizados</p>
-                    <div className="bg-white rounded-2xl border border-[#E8E4E1] overflow-hidden">
-                        <div className="divide-y divide-[#F4F1EE]">
-                            {finalizados.map(m => (
-                                <div key={m.Id_Match} className="px-6 py-4 flex items-center gap-4">
-                                    <div className="w-9 h-9 rounded-xl bg-[#F4F1EE] flex items-center justify-center text-xs font-bold text-[#A28C75] shrink-0">
-                                        #{m.Id_Match}
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-semibold text-[#5F2119]">Fase {m.Id_Fase}</p>
-                                        <p className="text-xs text-[#A28C75] mt-0.5">{m.Ubicacion || 'Sin ubicación'}</p>
-                                    </div>
-                                    <Badge estado={m.Estado} />
-                                </div>
-                            ))}
+        <>
+            <PageHeader title="Mis partidos" subtitle="Registra resultados y detalle técnico" />
+            {matches.length === 0 ? (
+                <Card><EmptyState msg="Sin partidos asignados" /></Card>
+            ) : matches.map(m => (
+                <Card key={m.Id_Match} style={{ marginBottom: '12px' }}>
+                    <div onClick={() => toggleExpand(m.Id_Match)}
+                        style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: '13px', fontWeight: 500, color: C.black }}>
+                                Partido #{m.Id_Match}
+                                {m.Torneo && <span style={{ fontSize: '11px', fontWeight: 400, color: C.taupe, marginLeft: '8px' }}>· {m.Torneo}</span>}
+                            </p>
+                            <p style={{ fontSize: '11px', color: C.taupe }}>
+                                {m.Fase || ''}{m.Grupo ? ` · ${m.Grupo}` : ''} · {m.Ubicacion || 'Sin ubicación'} · {m.Fecha_Hora ? new Date(m.Fecha_Hora).toLocaleString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Sin fecha'}
+                            </p>
                         </div>
+                        <Badge estado={m.Estado} />
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.taupe} strokeWidth="2"
+                            style={{ transform: expandido === m.Id_Match ? 'rotate(180deg)' : 'none', transition: '0.2s' }}>
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
                     </div>
-                </>
-            )}
-        </div>
+
+                    {expandido === m.Id_Match && (
+                        <div style={{ borderTop: `1px solid ${C.silver}`, padding: '16px 20px' }}>
+                            {error && <p style={{ fontSize: '11px', color: C.wine, marginBottom: '12px' }}>{error}</p>}
+
+                            <p style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: C.taupe, marginBottom: '10px' }}>Registrar resultado</p>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', marginBottom: '16px', alignItems: 'flex-end' }}>
+                                <Field label="ID Ganador"><input style={inp} type="number" value={(formRes[m.Id_Match] || {}).id_ganador || ''} onChange={e => setFormRes(prev => ({ ...prev, [m.Id_Match]: { ...(prev[m.Id_Match] || {}), id_ganador: e.target.value } }))} placeholder="Id_Participante" /></Field>
+                                <Field label="Score Lado 1"><input style={inp} type="number" value={(formRes[m.Id_Match] || {}).score1 || ''} onChange={e => setFormRes(prev => ({ ...prev, [m.Id_Match]: { ...(prev[m.Id_Match] || {}), score1: e.target.value } }))} placeholder="0" /></Field>
+                                <Field label="Score Lado 2"><input style={inp} type="number" value={(formRes[m.Id_Match] || {}).score2 || ''} onChange={e => setFormRes(prev => ({ ...prev, [m.Id_Match]: { ...(prev[m.Id_Match] || {}), score2: e.target.value } }))} placeholder="0" /></Field>
+                                <Btn small variant="wine" onClick={() => registrarResultado(m.Id_Match)}>Guardar</Btn>
+                            </div>
+
+                            <p style={{ fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: C.taupe, marginBottom: '10px' }}>Sets / Mapas</p>
+                            {(sets[m.Id_Match] || []).length > 0 && (
+                                <div style={{ marginBottom: '10px' }}>
+                                    {(sets[m.Id_Match] || []).map(s => (
+                                        <div key={s.Id_Set} style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${C.silver}`, fontSize: '12px', color: C.black }}>
+                                            <span style={{ color: C.taupe, minWidth: '50px' }}>Set {s.Numero_Set}</span>
+                                            <span>{s.Mapa_Modo || '—'}</span>
+                                            <span style={{ marginLeft: 'auto', fontWeight: 500 }}>{s.Puntaje_Lado1} – {s.Puntaje_Lado2}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '10px', alignItems: 'flex-end' }}>
+                                <Field label="Mapa / Modo"><input style={inp} value={(formSet[m.Id_Match] || {}).mapa || ''} onChange={e => setFormSet(prev => ({ ...prev, [m.Id_Match]: { ...(prev[m.Id_Match] || {}), mapa: e.target.value } }))} placeholder="Ej: Mirage / Tiempo 1" /></Field>
+                                <Field label="P. Lado 1"><input style={inp} type="number" value={(formSet[m.Id_Match] || {}).p1 || ''} onChange={e => setFormSet(prev => ({ ...prev, [m.Id_Match]: { ...(prev[m.Id_Match] || {}), p1: e.target.value } }))} placeholder="0" /></Field>
+                                <Field label="P. Lado 2"><input style={inp} type="number" value={(formSet[m.Id_Match] || {}).p2 || ''} onChange={e => setFormSet(prev => ({ ...prev, [m.Id_Match]: { ...(prev[m.Id_Match] || {}), p2: e.target.value } }))} placeholder="0" /></Field>
+                                <Btn small onClick={() => agregarSet(m.Id_Match)}>+ Set</Btn>
+                            </div>
+                        </div>
+                    )}
+                </Card>
+            ))}
+        </>
     );
 };
-
-const VistaPosiciones = () => {
+/* ── Sanciones ── */
+const VistaSanciones = () => {
+    const [sanciones, setSanciones] = useState([]);
+    const [participantes, setParticipantes] = useState([]);
     const [torneos, setTorneos] = useState([]);
-    const [selTorneo, setSelTorneo] = useState('');
-    const [posiciones, setPosiciones] = useState([]);
+    const [jugadoresEquipo, setJugadoresEquipo] = useState([]);
+    const [mostrar, setMostrar] = useState(false);
+    const [form, setForm] = useState({
+        id_torneo: '',
+        id_participante: '',
+        id_usuario: '',
+        tipo: 'Advertencia',
+        motivo: ''
+    });
+    const [error, setError] = useState('');
 
-    useEffect(() => {
-        fetch(`${API}/torneo`, { headers: getHeaders() }).then(r => r.json()).then(d => setTorneos(Array.isArray(d) ? d : d?.data || [])).catch(() => { });
-    }, []);
-    useEffect(() => {
-        if (!selTorneo) return;
-        fetch(`${API}/posiciones/torneo/${selTorneo}`, { headers: getHeaders() }).then(r => r.json()).then(d => setPosiciones(Array.isArray(d) ? d : d?.data || [])).catch(() => { });
-    }, [selTorneo]);
+    const cargar = () => {
+        const h = getHeaders();
+        fetch(`${API}/sanciones`, { headers: h })
+            .then(r => r.json())
+            .then(d => setSanciones(Array.isArray(d) ? d : []))
+            .catch(() => { });
+        fetch(`${API}/participantes`, { headers: h })
+            .then(r => r.json())
+            .then(d => setParticipantes(Array.isArray(d) ? d : []))
+            .catch(() => { });
+        fetch(`${API}/torneo`, { headers: h })
+            .then(r => r.json())
+            .then(d => setTorneos(Array.isArray(d) ? d : []))
+            .catch(() => { });
+    };
 
-    const medals = ['🥇', '🥈', '🥉'];
+    useEffect(() => { cargar(); }, []);
+
+
+    const cargarJugadores = (idEquipo) => {
+        if (!idEquipo) { setJugadoresEquipo([]); return; }
+        fetch(`${API}/equipo-jugadores/equipo/${idEquipo}`, { headers: getHeaders() })
+            .then(r => r.json())
+            .then(d => setJugadoresEquipo(Array.isArray(d) ? d : []))
+            .catch(() => setJugadoresEquipo([]));
+    };
+
+    const crear = async () => {
+        setError('');
+        try {
+            const res = await fetch(`${API}/sanciones`, {
+                method: 'POST', headers: getHeaders(),
+                body: JSON.stringify({
+                    Id_Torneo: Number(form.id_torneo),
+                    Id_Participante: Number(form.id_participante),
+                    Tipo_Sancion: form.tipo,
+                    Motivo: form.motivo,
+                }),
+            });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Error al registrar sanción'); }
+            setMostrar(false);
+            setForm({ id_torneo: '', id_participante: '', id_usuario: '', tipo: 'Advertencia', motivo: '' });
+            setJugadoresEquipo([]);
+            cargar();
+        } catch (err) { setError(err.message); }
+    };
+
+
+    const partsTorneo = form.id_torneo
+        ? participantes.filter(p => String(p.Id_Torneo) === form.id_torneo)
+        : [];
+
+
+    const esDeEquipos = partsTorneo.some(p => p.Id_Equipo);
+
+
+    const equiposUnicos = partsTorneo
+        .filter(p => p.Id_Equipo)
+        .reduce((acc, p) => {
+            if (!acc.find(e => String(e.Id_Equipo) === String(p.Id_Equipo))) acc.push(p);
+            return acc;
+        }, []);
+
+
+    const partSeleccionado = partsTorneo.find(p => String(p.Id_Participante) === form.id_participante);
 
     return (
-        <div>
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-[#5F2119]">Tabla de posiciones</h1>
-                <p className="text-[#A28C75] text-sm mt-1.5">Solo lectura</p>
+        <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+                <PageHeader title="Sanciones" subtitle={`${sanciones.length} sanciones registradas`} />
+                <Btn onClick={() => { setMostrar(!mostrar); setError(''); }}>
+                    {mostrar ? 'Cancelar' : '+ Nueva sanción'}
+                </Btn>
             </div>
-            <select value={selTorneo} onChange={e => setSelTorneo(e.target.value)}
-                className="bg-white border border-[#E8E4E1] px-5 py-3 rounded-2xl outline-none text-sm text-[#5F2119] mb-5 min-w-[280px]">
-                <option value="">— Seleccionar torneo —</option>
-                {torneos.map(t => <option key={t.Id_Torneo} value={t.Id_Torneo}>{t.Nombre}</option>)}
-            </select>
 
-            {!selTorneo ? (
-                <div className="bg-white rounded-2xl border border-[#E8E4E1] p-12 text-center">
-                    <p className="text-sm text-[#A28C75]">Selecciona un torneo para ver la clasificación</p>
-                </div>
-            ) : posiciones.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-[#E8E4E1] p-12 text-center">
-                    <p className="text-sm text-[#A28C75]">Sin posiciones registradas aún</p>
-                </div>
-            ) : (
-                <div className="space-y-2">
-                    {posiciones.map((p, i) => (
-                        <div key={p.Id_Posicion} className={`rounded-2xl border px-6 py-4 flex items-center gap-5 ${i === 0 ? 'bg-[#5F2119] border-[#7C2220]' : 'bg-white border-[#E8E4E1]'}`}>
-                            <span className="text-xl w-8 text-center shrink-0">{medals[i] || <span className="text-sm font-bold text-[#A28C75]">{i + 1}</span>}</span>
-                            <p className={`flex-1 text-sm font-bold ${i === 0 ? 'text-[#F4F1EE]' : 'text-[#5F2119]'}`}>{p.Participante || `#${p.Id_Participante}`}</p>
-                            {[['Pts', p.Puntos], ['PG', p.Ganados || p.PG || 0], ['PP', p.Perdidos || p.PP || 0]].map(([l, v]) => (
-                                <div key={l} className="text-center min-w-[40px]">
-                                    <p className={`text-[10px] uppercase tracking-wider ${i === 0 ? 'text-[#D7C1A8]/60' : 'text-[#A28C75]'}`}>{l}</p>
-                                    <p className={`text-sm font-bold mt-0.5 ${i === 0 ? 'text-[#D7C1A8]' : 'text-[#5F2119]'}`}>{v}</p>
-                                </div>
+            {mostrar && (
+                <Card style={{ marginBottom: '16px', padding: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'end' }}>
+
+
+                        <Select
+                            label="Torneo *"
+                            value={form.id_torneo}
+                            onChange={e => {
+                                setForm({ ...form, id_torneo: e.target.value, id_participante: '', id_usuario: '' });
+                                setJugadoresEquipo([]);
+                            }}
+                        >
+                            <option value="">Seleccionar torneo...</option>
+                            {torneos.map(t => (
+                                <option key={t.Id_Torneo} value={t.Id_Torneo}>{t.Nombre}</option>
                             ))}
+                        </Select>
+
+
+                        {form.id_torneo && !esDeEquipos && <div />}
+
+
+                        {form.id_torneo && esDeEquipos && (
+                            <Select
+                                label="Equipo *"
+                                value={form.id_participante}
+                                onChange={e => {
+                                    const part = partsTorneo.find(p => String(p.Id_Participante) === e.target.value);
+                                    setForm({ ...form, id_participante: e.target.value, id_usuario: '' });
+                                    cargarJugadores(part?.Id_Equipo);
+                                }}
+                            >
+                                <option value="">Seleccionar equipo...</option>
+                                {equiposUnicos.map(p => (
+                                    <option key={p.Id_Participante} value={p.Id_Participante}>
+                                        👥 {p.Nombre_En_Torneo || `Equipo #${p.Id_Equipo}`}
+                                    </option>
+                                ))}
+                            </Select>
+                        )}
+
+
+                        {form.id_torneo && !esDeEquipos && (
+                            <Select
+                                label="Participante *"
+                                value={form.id_participante}
+                                onChange={e => setForm({ ...form, id_participante: e.target.value, id_usuario: '' })}
+                            >
+                                <option value="">Seleccionar participante...</option>
+                                {partsTorneo.map(p => (
+                                    <option key={p.Id_Participante} value={p.Id_Participante}>
+                                        {p.Nombre_En_Torneo || `#${p.Id_Participante}`}
+                                    </option>
+                                ))}
+                            </Select>
+                        )}
+
+
+                        {form.id_participante && esDeEquipos && jugadoresEquipo.length > 0 && (
+                            <Select
+                                label="Sancionar a..."
+                                value={form.id_usuario}
+                                onChange={e => setForm({ ...form, id_usuario: e.target.value })}
+                                style={{ gridColumn: '1/-1' }}
+                            >
+                                <option value=""> Equipo completo</option>
+                                {jugadoresEquipo.map(j => (
+                                    <option key={j.Id_Usuario} value={j.Id_Usuario}>
+                                        {j.Nombre_Completo} ({j.Nickname})
+                                    </option>
+                                ))}
+                            </Select>
+                        )}
+
+
+                        <Select
+                            label="Tipo *"
+                            value={form.tipo}
+                            onChange={e => setForm({ ...form, tipo: e.target.value })}
+                        >
+                            <option value="Advertencia">Advertencia</option>
+                            <option value="Suspension">Suspensión</option>
+                            <option value="Descalificacion">Descalificación</option>
+                        </Select>
+
+
+                        <Input
+                            label="Motivo *"
+                            value={form.motivo}
+                            onChange={e => setForm({ ...form, motivo: e.target.value })}
+                            placeholder="Descripción de la sanción"
+                        />
+
+                        <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {error && <p style={{ fontSize: '11px', color: 'var(--luxe-wine)' }}>{error}</p>}
+                            <Btn onClick={crear}>Registrar sanción</Btn>
                         </div>
-                    ))}
-                </div>
+                    </div>
+                </Card>
             )}
-        </div>
+
+            <Card>
+                {sanciones.length === 0
+                    ? <EmptyState msg="Sin sanciones registradas" />
+                    : sanciones.map(s => (
+                        <Row key={s.Id_Sancion}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--luxe-black)' }}>
+                                    {s.Participante || `Participante #${s.Id_Participante}`}
+                                </p>
+                                <p style={{ fontSize: '11px', color: 'var(--luxe-taupe)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {s.Motivo || 'Sin motivo'} · Torneo: {s.Torneo || s.Id_Torneo}
+                                </p>
+                            </div>
+                            <Badge estado={s.Tipo_Sancion || 'Advertencia'} />
+                            <p style={{ fontSize: '11px', color: 'var(--luxe-taupe)', flexShrink: 0 }}>
+                                {s.Fecha_Sancion ? new Date(s.Fecha_Sancion).toLocaleDateString('es') : '—'}
+                            </p>
+                        </Row>
+                    ))}
+            </Card>
+        </>
     );
 };
-
+/* ── Componente principal ── */
 const DashboardArbitro = () => {
     const navigate = useNavigate();
     const [activo, setActivo] = useState('dashboard');
     const usuario = getUser();
+
     const onLogout = () => { localStorage.removeItem('token'); localStorage.removeItem('usuario'); navigate('/'); };
+
+    const vistas = {
+        dashboard: <VistaDashboard />,
+        matches: <VistaMatches />,
+        sanciones: <VistaSanciones />,
+    };
+
     return (
-        <div className="flex min-h-screen bg-[#F4F1EE]">
-            <Sidebar activo={activo} setActivo={setActivo} usuario={usuario} onLogout={onLogout} />
-            <main className="flex-1 p-8 overflow-auto">
-                {activo === 'dashboard' ? <VistaPartidos /> : <VistaPosiciones />}
+        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--luxe-cream)' }}>
+            <Sidebar activo={activo} setActivo={setActivo} usuario={usuario} onLogout={onLogout} items={ITEMS} rol="Árbitro" />
+            <main style={{ flex: 1, padding: '2.5rem', overflowY: 'auto', minWidth: 0 }}>
+                {vistas[activo]}
             </main>
         </div>
     );
 };
+
 export default DashboardArbitro;

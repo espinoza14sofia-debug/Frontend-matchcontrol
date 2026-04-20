@@ -1,145 +1,82 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const API = 'http://localhost:3000';
+
 const Register = () => {
     const navigate = useNavigate();
-
-    const [formData, setFormData] = useState({
-        Nombre_Completo: '',
-        Nickname: '',
-        Email: '',
-        Password_Hash: '',
-        Id_Rol: 4
-    });
-
+    const [form, setForm] = useState({ Nombre_Completo: '', Nickname: '', Email: '', Password_Hash: '', confirmar: '' });
     const [error, setError] = useState('');
-    const [cargando, setCargando] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-        setError('');
-    };
+    const handle = e => { setForm({ ...form, [e.target.name]: e.target.value }); setError(''); };
 
     const handleRegister = async (e) => {
         e.preventDefault();
-        setError('');
-
-        if (!formData.Nombre_Completo || !formData.Nickname || !formData.Email || !formData.Password_Hash) {
-            setError('Todos los campos son obligatorios');
-            return;
-        }
-
-        const dataToSend = {
-            nombreCompleto: formData.Nombre_Completo,
-            nickname: formData.Nickname,
-            email: formData.Email,
-            passwordHash: formData.Password_Hash,
-            idRol: 4,
-        };
-
-        setCargando(true);
+        if (!form.Nombre_Completo || !form.Nickname || !form.Email || !form.Password_Hash) { setError('Todos los campos son obligatorios'); return; }
+        if (form.Password_Hash !== form.confirmar) { setError('Las contraseñas no coinciden'); return; }
+        if (form.Password_Hash.length < 6) { setError('La contraseña debe tener al menos 6 caracteres'); return; }
+        setLoading(true);
         try {
-            const response = await fetch('http://localhost:3000/usuarios', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataToSend),
+            const res = await fetch(`${API}/usuarios`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombreCompleto: form.Nombre_Completo, nickname: form.Nickname, email: form.Email, passwordHash: form.Password_Hash, idRol: 4 }),
             });
-
-            // Muestra el error real del backend (nickname duplicado, email duplicado)
-            if (!response.ok) {
-                const errorData = await response.json();
-                setError(errorData.message || 'Error en el registro');
-                return;
-            }
-
-            alert(`Usuario ${formData.Nickname} registrado correctamente`);
+            if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Error en el registro'); }
             navigate('/');
-
-        } catch (err) {
-            // Solo llega aquí si el servidor no responde
-            setError('No se puede conectar con el servidor');
-        } finally {
-            setCargando(false);
-        }
+        } catch (err) { setError(err.message); }
+        finally { setLoading(false); }
     };
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-[#F4F1EE]">
-            <div className="w-full max-w-sm px-8">
+    const inp = { width: '100%', background: 'var(--luxe-white)', border: '1px solid var(--luxe-sand)', borderRadius: '4px', padding: '14px 16px', fontSize: '14px', color: 'var(--luxe-black)', outline: 'none' };
+    const lbl = { display: 'block', fontSize: '10px', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--luxe-taupe)', marginBottom: '8px' };
 
-                <div className="text-center mb-10">
-                    <h2 className="text-lg font-light text-[#5F2119] tracking-[0.3em] uppercase">
-                        Registro de Usuario
-                    </h2>
-                    <div className="h-[1px] w-12 bg-[#7C2220] mx-auto mt-4 opacity-40"></div>
+    return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--luxe-cream)', padding: '2rem' }}>
+            <div style={{ width: '100%', maxWidth: '400px' }}>
+                <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+                    <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '40px', fontWeight: 300, color: 'var(--luxe-black)' }}>
+                        Match<span style={{ color: 'var(--luxe-wine)', fontStyle: 'italic' }}>Control</span>
+                    </h1>
+                    <p style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--luxe-taupe)', marginTop: '8px' }}>Registro de usuario</p>
+                    <div style={{ width: '32px', height: '1px', background: 'var(--luxe-wine)', margin: '12px auto 0' }} />
                 </div>
 
-                <form onSubmit={handleRegister} className="space-y-3">
+                <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {[
+                        { name: 'Nombre_Completo', label: 'Nombre completo', type: 'text', ph: 'Tu nombre' },
+                        { name: 'Nickname', label: 'Nombre de usuario', type: 'text', ph: 'Nickname único' },
+                        { name: 'Email', label: 'Correo electrónico', type: 'email', ph: 'correo@ejemplo.com' },
+                        { name: 'Password_Hash', label: 'Contraseña', type: 'password', ph: '••••••••' },
+                        { name: 'confirmar', label: 'Confirmar contraseña', type: 'password', ph: '••••••••' },
+                    ].map(f => (
+                        <div key={f.name}>
+                            <label style={lbl}>{f.label}</label>
+                            <input name={f.name} type={f.type} placeholder={f.ph} value={form[f.name]} onChange={handle} disabled={loading} style={inp}
+                                onFocus={e => e.target.style.borderColor = 'var(--luxe-wine)'}
+                                onBlur={e => e.target.style.borderColor = 'var(--luxe-sand)'}
+                            />
+                        </div>
+                    ))}
 
-                    <input
-                        type="text"
-                        name="Nombre_Completo"
-                        placeholder="Nombre Completo"
-                        value={formData.Nombre_Completo}
-                        onChange={handleChange}
-                        disabled={cargando}
-                        className="w-full bg-[#E8E4E1]/60 p-4 rounded-2xl outline-none text-sm text-[#5F2119] placeholder-[#A28C75] disabled:opacity-50"
-                    />
+                    {error && <p style={{ fontSize: '12px', color: 'var(--luxe-wine)', textAlign: 'center' }}>{error}</p>}
 
-                    <input
-                        type="text"
-                        name="Nickname"
-                        placeholder="Nombre de Usuario"
-                        value={formData.Nickname}
-                        onChange={handleChange}
-                        disabled={cargando}
-                        className="w-full bg-[#E8E4E1]/60 p-4 rounded-2xl outline-none text-sm text-[#5F2119] placeholder-[#A28C75] disabled:opacity-50"
-                    />
-
-                    <input
-                        type="email"
-                        name="Email"
-                        placeholder="Correo Electrónico"
-                        value={formData.Email}
-                        onChange={handleChange}
-                        disabled={cargando}
-                        className="w-full bg-[#E8E4E1]/60 p-4 rounded-2xl outline-none text-sm text-[#5F2119] placeholder-[#A28C75] disabled:opacity-50"
-                    />
-
-                    <input
-                        type="password"
-                        name="Password_Hash"
-                        placeholder="Contraseña"
-                        value={formData.Password_Hash}
-                        onChange={handleChange}
-                        disabled={cargando}
-                        className="w-full bg-[#E8E4E1]/60 p-4 rounded-2xl outline-none text-sm text-[#5F2119] placeholder-[#A28C75] disabled:opacity-50"
-                    />
-
-                    {/* Muestra el error real del backend */}
-                    {error && (
-                        <p className="text-[#7C2220] text-xs text-center pt-1">{error}</p>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={cargando}
-                        className="w-full bg-[#5F2119] text-[#D7C1A8] py-4 rounded-2xl font-bold uppercase tracking-[0.2em] text-xs mt-6 hover:bg-[#7C2220] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                        {cargando ? 'Registrando...' : 'Finalizar Registro'}
-                    </button>
-
+                    <button type="submit" disabled={loading} style={{
+                        marginTop: '8px', width: '100%', background: 'var(--luxe-black)', color: 'var(--luxe-cream)',
+                        border: 'none', borderRadius: '4px', padding: '16px', fontSize: '11px',
+                        letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 500, opacity: loading ? 0.6 : 1
+                    }}
+                        onMouseOver={e => !loading && (e.target.style.background = 'var(--luxe-wine)')}
+                        onMouseOut={e => e.target.style.background = 'var(--luxe-black)'}
+                    >{loading ? 'Registrando...' : 'Crear cuenta'}</button>
                 </form>
 
-                <div className="mt-10 text-center">
-                    <button
-                        onClick={() => navigate('/')}
-                        className="text-[#A28C75] text-[10px] uppercase tracking-widest hover:text-[#5F2119] font-bold"
-                    >
-                        ¿Ya tienes cuenta? Iniciar sesión
-                    </button>
+                <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                    <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--luxe-taupe)' }}
+                        onMouseOver={e => e.target.style.color = 'var(--luxe-black)'}
+                        onMouseOut={e => e.target.style.color = 'var(--luxe-taupe)'}
+                    >¿Ya tienes cuenta? Inicia sesión</button>
                 </div>
-
             </div>
         </div>
     );

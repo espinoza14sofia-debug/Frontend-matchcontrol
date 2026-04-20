@@ -8,7 +8,7 @@ import DashboardOrganizador from './pages/DashboardOrganizador';
 import DashboardArbitro from './pages/DashboardArbitro';
 import DashboardParticipante from './pages/DashboardParticipante';
 
-// Protege rutas: si no hay token redirige al login
+
 const PrivateRoute = ({ children }) => {
     const token = localStorage.getItem('token');
     return token ? children : <Navigate to="/" replace />;
